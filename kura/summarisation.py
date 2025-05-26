@@ -1,5 +1,5 @@
 from asyncio import Semaphore, gather
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import instructor
 from tqdm.asyncio import tqdm_asyncio
@@ -23,12 +23,12 @@ class SummaryModel(BaseSummaryModel):
     
     def __init__(
         self,
-        model: str = "gemini/gemini-2.0-flash",
+        model: str = "openai/gpt-4o-mini",
         max_concurrent_requests: int = 50,
         extractors: list[
             Callable[
-                [Conversation, Semaphore, dict[str, Any]],
-                dict,
+                [Conversation, Semaphore],
+                Union[ExtractedProperty, list[ExtractedProperty]]
             ]
         ] = [],
         console: Optional['Console'] = None,
@@ -166,7 +166,7 @@ class SummaryModel(BaseSummaryModel):
                         
                         return completed_tasks
                         
-            except (ImportError, LiveError):
+            except (ImportError, LiveError): #type: ignore
                 # Rich not available or Live error, fall back to simple print statements
                 self.console.print(f"[cyan]Starting {desc}...[/cyan]")
                 completed_tasks = []
