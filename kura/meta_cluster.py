@@ -12,7 +12,7 @@ from pydantic import BaseModel, field_validator, ValidationInfo
 import re
 from thefuzz import fuzz
 import asyncio
-from typing import Optional
+from typing import Optional,Union
 
 # Rich imports handled by Kura base class
 from typing import TYPE_CHECKING
@@ -74,7 +74,7 @@ class MetaClusterModel(BaseMetaClusterModel):
         max_concurrent_requests: int = 50,
         model: str = "openai/gpt-4o-mini",
         embedding_model: BaseEmbeddingModel = OpenAIEmbeddingModel(),
-        clustering_model: BaseClusteringMethod | None = None,
+        clustering_model: Union[BaseClusteringMethod, None] = None,
         max_clusters: int = 10,
         console: Optional['Console'] = None,
         **kwargs,  # For future use
