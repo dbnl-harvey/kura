@@ -86,13 +86,13 @@ The names you propose must follow these requirements:
 
 Below are the related statements:
 <positive_examples>
-{% for item in positive_examples %}{{ item.embeddable_text() }}
+{% for item in positive_examples %}{{ item }}
 {% endfor %}
 </positive_examples>
 
 For context, here are statements from nearby groups that are NOT part of the group you're summarizing:
 <contrastive_examples>
-{% for item in contrastive_examples %}{{ item.embeddable_text() }}
+{% for item in contrastive_examples %}{{ item }}
 {% endfor %}
 </contrastive_examples>
 
@@ -129,7 +129,7 @@ Do not elaborate beyond what you say in the tags. Remember to analyze both the s
         embeddings: list[list[float]] = await self._gather_with_progress(
             # TODO: This representation needs to be templated, but we want to embed more than just the summary, including the request and task
             [
-                self.embedding_model.embed(text=item.embeddable_text(), sem=sem)
+                self.embedding_model.embed(text=str(item), sem=sem)
                 for item in summaries
             ],
             desc="Embedding Summaries",

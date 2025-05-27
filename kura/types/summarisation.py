@@ -27,7 +27,7 @@ class GeneratedSummary(BaseModel):
         None, description="List of errors the assistant made"
     )
 
-    def embeddable_text(self) -> str:
+    def __repr__(self) -> str:
         return f"""<summary>{self.summary}</summary>
 <request>{self.request}</request>
 <task>{self.task}</task>
