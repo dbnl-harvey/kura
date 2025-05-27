@@ -38,6 +38,7 @@ class GeneratedSummary(BaseModel):
 class ConversationSummary(GeneratedSummary):
     chat_id: str
     metadata: dict
+    embedding: Optional[list[float]] = None
 
 
 class ExtractedProperty(BaseModel):

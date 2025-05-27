@@ -202,11 +202,13 @@ Do not elaborate beyond what you say in the tags. Remember to analyze both the s
         )
 
         # Set embeddings on the summary objects
-        for summary, embedding in zip(summaries, embeddings):
-            summary.embedding = embedding
+        items_with_embeddings = [
+            {"item": summary, "embedding": embedding}
+            for summary, embedding in zip(summaries, embeddings)
+        ]
 
         logger.debug("Set embeddings on summary objects, starting clustering")
-        cluster_id_to_summaries = self.clustering_method.cluster(summaries)
+        cluster_id_to_summaries = self.clustering_method.cluster(items_with_embeddings)
         logger.info(
             f"Clustering method produced {len(cluster_id_to_summaries)} clusters"
         )
