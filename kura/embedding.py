@@ -96,17 +96,15 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
         self,
         model_name: str = "all-MiniLM-L6-v2",
         model_batch_size: int = 128,
-        n_concurrent_jobs: int = 5,
     ):
         from sentence_transformers import SentenceTransformer
 
         logger.info(
-            f"Initializing SentenceTransformerEmbeddingModel with model={model_name}, batch_size={model_batch_size}, concurrent_jobs={n_concurrent_jobs}"
+            f"Initializing SentenceTransformerEmbeddingModel with model={model_name}, batch_size={model_batch_size}"
         )
         try:
             self.model = SentenceTransformer(model_name)
             self._model_batch_size = model_batch_size
-            self._n_concurrent_jobs = n_concurrent_jobs
             logger.info(f"Successfully loaded SentenceTransformer model: {model_name}")
         except Exception as e:
             logger.error(f"Failed to load SentenceTransformer model {model_name}: {e}")
