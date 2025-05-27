@@ -3,7 +3,9 @@ from kura.types import Cluster, ProjectedCluster
 from kura.embedding import OpenAIEmbeddingModel
 from typing import Union
 import numpy as np
-import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class HDBUMAP(BaseDimensionalityReduction):
@@ -11,7 +13,7 @@ class HDBUMAP(BaseDimensionalityReduction):
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
         return "dimensionality.jsonl"
-    
+
     def __init__(
         self,
         embedding_model: BaseEmbeddingModel = OpenAIEmbeddingModel(),
@@ -31,17 +33,22 @@ class HDBUMAP(BaseDimensionalityReduction):
     ) -> list[ProjectedCluster]:
         # Embed all clusters
         from umap import UMAP
-        sem = asyncio.Semaphore(50)
-        cluster_embeddings = await asyncio.gather(
-            *[
-                self.embedding_model.embed(
-                    f"Name: {c.name}\nDescription: {c.description}", sem
-                )
-                for c in clusters
-            ]
-        )
 
-        # Convert embeddings to numpy array
+        if not clusters:
+            return []
+
+        texts_to_embed = [
+            f"Name: {c.name}\nDescription: {c.description}" for c in clusters
+        ]
+
+        cluster_embeddings = await self.embedding_model.embed(texts_to_embed)
+
+        if not cluster_embeddings or len(cluster_embeddings) != len(texts_to_embed):
+            logger.error(
+                "Error: Number of embeddings does not match number of clusters or embeddings are empty."
+            )
+            return []
+
         embeddings = np.array(cluster_embeddings)
 
         # Project to 2D using UMAP

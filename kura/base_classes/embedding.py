@@ -1,9 +1,20 @@
 from abc import ABC, abstractmethod
-from asyncio import Semaphore
 
 
 class BaseEmbeddingModel(ABC):
+    @property
     @abstractmethod
-    async def embed(self, text: str, sem: Semaphore) -> list[float]:
-        """Embed a single text into a list of floats"""
+    def model_batch_size(self) -> int:
+        """The default batch size for this embedding model instance."""
+        pass
+
+    @property
+    @abstractmethod
+    def n_concurrent_jobs(self) -> int:
+        """The default number of concurrent jobs for this embedding model instance."""
+        pass
+
+    @abstractmethod
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        """Embed a list of texts into a list of lists of floats"""
         pass
