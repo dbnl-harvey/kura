@@ -16,6 +16,9 @@ class Cluster(BaseModel):
     def count(self) -> int:
         return len(self.chat_ids)
 
+    def __str__(self) -> str:
+        return f"Name: {self.name}\nDescription: {self.description}"
+
 
 class GeneratedCluster(BaseModel):
     name: str = Field(
