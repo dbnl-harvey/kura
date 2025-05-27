@@ -410,13 +410,7 @@ Remember that
 
         summary = ConversationSummary(
             chat_id=conversation.chat_id,
-            summary=resp.summary,
-            request=resp.request,
-            languages=resp.languages,
-            task=resp.task,
-            concerning_score=resp.concerning_score,
-            user_frustration=resp.user_frustration,
-            assistant_errors=resp.assistant_errors,
+            **resp.model_dump(),
             metadata={
                 "conversation_turns": len(conversation.messages),
                 **conversation.metadata,

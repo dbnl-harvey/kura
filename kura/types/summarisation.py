@@ -10,6 +10,10 @@ class GeneratedSummary(BaseModel):
     request: Optional[str] = Field(
         None, description="The user's overall request for the assistant"
     )
+    topic: Optional[str] = Field(
+        None,
+        description="The main high-level topic of the conversation (e.g., 'software development', 'creative writing', 'scientific research').",
+    )
     languages: Optional[list[str]] = Field(
         None,
         description="Main languages present in the conversation including human and programming languages (e.g., ['english', 'arabic', 'python', 'javascript'])",
@@ -29,6 +33,7 @@ class GeneratedSummary(BaseModel):
 
     def __repr__(self) -> str:
         return f"""<summary>{self.summary}</summary>
+<topic>{self.topic}</topic>
 <request>{self.request}</request>
 <task>{self.task}</task>
 <languages>{self.languages}</languages>
