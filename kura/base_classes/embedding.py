@@ -1,9 +1,8 @@
 from abc import ABC, abstractmethod
-from asyncio import Semaphore
 
 
 class BaseEmbeddingModel(ABC):
     @abstractmethod
-    async def embed(self, text: str, sem: Semaphore) -> list[float]:
-        """Embed a single text into a list of floats"""
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        """Embed a list of texts into a list of lists of floats"""
         pass

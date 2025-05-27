@@ -21,6 +21,7 @@ dependencies = [
     "thefuzz>=0.22.1",
     "typer>=0.9.0",
     "sqlmodel>=0.0.14",
+    "datasets>=3.6.0",
 ]
 
 

@@ -4,6 +4,7 @@ from typing import Callable, Optional, Union
 import instructor
 from tqdm.asyncio import tqdm_asyncio
 import asyncio
+import logging
 
 from kura.base_classes import BaseSummaryModel
 from kura.types import Conversation, ConversationSummary, ExtractedProperty
@@ -11,8 +12,11 @@ from kura.types.summarisation import GeneratedSummary
 
 # Rich imports handled by Kura base class
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 
 class SummaryModel(BaseSummaryModel):
@@ -20,7 +24,7 @@ class SummaryModel(BaseSummaryModel):
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
         return "summaries.jsonl"
-    
+
     def __init__(
         self,
         model: str = "openai/gpt-4o-mini",
@@ -28,11 +32,11 @@ class SummaryModel(BaseSummaryModel):
         extractors: list[
             Callable[
                 [Conversation, Semaphore],
-                Union[ExtractedProperty, list[ExtractedProperty]]
+                Union[ExtractedProperty, list[ExtractedProperty]],
             ]
         ] = [],
-        console: Optional['Console'] = None,
-        **kwargs, # For future use
+        console: Optional["Console"] = None,
+        **kwargs,  # For future use
     ):
         self.sems = None
         self.extractors = extractors
@@ -40,29 +44,44 @@ class SummaryModel(BaseSummaryModel):
         self.model = model
         self.semaphore = asyncio.Semaphore(max_concurrent_requests)
         self.console = console
+        logger.info(
+            f"Initialized SummaryModel with model={model}, max_concurrent_requests={max_concurrent_requests}, extractors={len(extractors)}"
+        )
 
-    async def _gather_with_progress(self, tasks, desc: str = "Processing", disable: bool = False, show_preview: bool = False):
+    async def _gather_with_progress(
+        self,
+        tasks,
+        desc: str = "Processing",
+        disable: bool = False,
+        show_preview: bool = False,
+    ):
         """Helper method to run async gather with Rich progress bar if available, otherwise tqdm."""
         if self.console and not disable:
             try:
-                from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+                from rich.progress import (
+                    Progress,
+                    SpinnerColumn,
+                    TextColumn,
+                    BarColumn,
+                    TaskProgressColumn,
+                    TimeRemainingColumn,
+                )
                 from rich.live import Live
                 from rich.layout import Layout
                 from rich.panel import Panel
                 from rich.text import Text
                 from rich.errors import LiveError
-                
+
                 if show_preview:
                     # Use Live display with progress and preview buffer
                     layout = Layout()
                     layout.split_column(
-                        Layout(name="progress", size=3),
-                        Layout(name="preview")
+                        Layout(name="progress", size=3), Layout(name="preview")
                     )
-                    
+
                     preview_buffer = []
                     max_preview_items = 3
-                    
+
                     # Create progress with cleaner display
                     progress = Progress(
                         SpinnerColumn(),
@@ -70,11 +89,11 @@ class SummaryModel(BaseSummaryModel):
                         BarColumn(),
                         TaskProgressColumn(),
                         TimeRemainingColumn(),
-                        console=self.console
+                        console=self.console,
                     )
                     task_id = progress.add_task(f"[cyan]{desc}...", total=len(tasks))
                     layout["progress"].update(progress)
-                    
+
                     try:
                         with Live(layout, console=self.console, refresh_per_second=4):
                             completed_tasks = []
@@ -82,58 +101,83 @@ class SummaryModel(BaseSummaryModel):
                                 result = await task
                                 completed_tasks.append(result)
                                 progress.update(task_id, completed=i + 1)
-                                
+
                                 # Add to preview buffer if it's a ConversationSummary
-                                if hasattr(result, 'summary') and hasattr(result, 'chat_id'):
+                                if hasattr(result, "summary") and hasattr(
+                                    result, "chat_id"
+                                ):
                                     preview_buffer.append(result)
                                     if len(preview_buffer) > max_preview_items:
                                         preview_buffer.pop(0)
-                                    
+
                                     # Update preview display
                                     preview_text = Text()
                                     for j, summary in enumerate(preview_buffer):
                                         # Color based on user frustration level
                                         frustration_style = {
-                                            1: "green",    # Not frustrated
-                                            2: "yellow",   # Slightly frustrated
+                                            1: "green",  # Not frustrated
+                                            2: "yellow",  # Slightly frustrated
                                             3: "orange3",  # Moderately frustrated
-                                            4: "red",      # Very frustrated
-                                            5: "red1"      # Extremely frustrated
+                                            4: "red",  # Very frustrated
+                                            5: "red1",  # Extremely frustrated
                                         }.get(summary.user_frustration, "white")
 
                                         # Color based on concerning score
                                         concern_style = {
-                                            1: "green",    # Not concerning
-                                            2: "yellow",   # Slightly concerning
+                                            1: "green",  # Not concerning
+                                            2: "yellow",  # Slightly concerning
                                             3: "orange3",  # Moderately concerning
-                                            4: "red",      # Very concerning
-                                            5: "red1"      # Extremely concerning
+                                            4: "red",  # Very concerning
+                                            5: "red1",  # Extremely concerning
                                         }.get(summary.concerning_score, "white")
 
-                                        preview_text.append(f"Chat {summary.chat_id[:8]}...: ", style="bold blue")
-                                        preview_text.append(f"{summary.summary[:100]}...\n", style=frustration_style)
-                                        
+                                        preview_text.append(
+                                            f"Chat {summary.chat_id[:8]}...: ",
+                                            style="bold blue",
+                                        )
+                                        preview_text.append(
+                                            f"{summary.summary[:100]}...\n",
+                                            style=frustration_style,
+                                        )
+
                                         if summary.request:
-                                            preview_text.append(f"Request: {summary.request[:50]}...\n", style=frustration_style)
+                                            preview_text.append(
+                                                f"Request: {summary.request[:50]}...\n",
+                                                style=frustration_style,
+                                            )
                                         if summary.languages:
-                                            preview_text.append(f"Languages: {', '.join(summary.languages)}\n", style="dim cyan")
+                                            preview_text.append(
+                                                f"Languages: {', '.join(summary.languages)}\n",
+                                                style="dim cyan",
+                                            )
                                         if summary.task:
-                                            preview_text.append(f"Task: {summary.task[:50]}...\n", style=concern_style)
-                                        
+                                            preview_text.append(
+                                                f"Task: {summary.task[:50]}...\n",
+                                                style=concern_style,
+                                            )
+
                                         # Add frustration and concern indicators
                                         if summary.user_frustration:
-                                            preview_text.append(f"Frustration: {'😊' * summary.user_frustration}\n", style=frustration_style)
+                                            preview_text.append(
+                                                f"Frustration: {'😊' * summary.user_frustration}\n",
+                                                style=frustration_style,
+                                            )
                                         if summary.concerning_score:
-                                            preview_text.append(f"Concern: {'⚠️' * summary.concerning_score}\n", style=concern_style)
-                                        
+                                            preview_text.append(
+                                                f"Concern: {'⚠️' * summary.concerning_score}\n",
+                                                style=concern_style,
+                                            )
+
                                         preview_text.append("\n")
-                                    
-                                    layout["preview"].update(Panel(
-                                        preview_text,
-                                        title=f"[green]Recent Summaries ({len(preview_buffer)}/{max_preview_items})",
-                                        border_style="green"
-                                    ))
-                            
+
+                                    layout["preview"].update(
+                                        Panel(
+                                            preview_text,
+                                            title=f"[green]Recent Summaries ({len(preview_buffer)}/{max_preview_items})",
+                                            border_style="green",
+                                        )
+                                    )
+
                             return completed_tasks
                     except LiveError:
                         # If Rich Live fails, fall back to simple progress without Live
@@ -152,21 +196,23 @@ class SummaryModel(BaseSummaryModel):
                         BarColumn(),
                         TaskProgressColumn(),
                         TimeRemainingColumn(),
-                        console=self.console
+                        console=self.console,
                     )
-                    
+
                     with progress:
-                        task_id = progress.add_task(f"[cyan]{desc}...", total=len(tasks))
-                        
+                        task_id = progress.add_task(
+                            f"[cyan]{desc}...", total=len(tasks)
+                        )
+
                         completed_tasks = []
                         for i, task in enumerate(asyncio.as_completed(tasks)):
                             result = await task
                             completed_tasks.append(result)
                             progress.update(task_id, completed=i + 1)
-                        
+
                         return completed_tasks
-                        
-            except (ImportError, LiveError): #type: ignore
+
+            except (ImportError, LiveError):  # type: ignore
                 # Rich not available or Live error, fall back to simple print statements
                 self.console.print(f"[cyan]Starting {desc}...[/cyan]")
                 completed_tasks = []
@@ -174,7 +220,9 @@ class SummaryModel(BaseSummaryModel):
                     result = await task
                     completed_tasks.append(result)
                     if (i + 1) % max(1, len(tasks) // 10) == 0 or i == len(tasks) - 1:
-                        self.console.print(f"[cyan]{desc}: {i + 1}/{len(tasks)} completed[/cyan]")
+                        self.console.print(
+                            f"[cyan]{desc}: {i + 1}/{len(tasks)} completed[/cyan]"
+                        )
                 self.console.print(f"[green]✓ {desc} completed![/green]")
                 return completed_tasks
         else:
@@ -188,6 +236,10 @@ class SummaryModel(BaseSummaryModel):
         if self.sems is None:
             self.sems = self.semaphore
 
+        logger.info(
+            f"Starting summarization of {len(conversations)} conversations using model {self.model}"
+        )
+
         summaries = await self._gather_with_progress(
             [
                 self.summarise_conversation(conversation)
@@ -196,21 +248,41 @@ class SummaryModel(BaseSummaryModel):
             desc=f"Summarising {len(conversations)} conversations",
             show_preview=True,
         )
+
+        logger.info(
+            f"Completed summarization of {len(conversations)} conversations, produced {len(summaries)} summaries"
+        )
         return summaries
 
     async def apply_hooks(
         self, conversation: Conversation
     ) -> dict[str, Union[str, int, float, bool, list[str], list[int], list[float]]]:
+        logger.debug(
+            f"Applying {len(self.extractors)} extractors to conversation {conversation.chat_id}"
+        )
+
         coros = [
-            extractor(conversation, self.semaphore)
-            for extractor in self.extractors
+            extractor(conversation, self.semaphore) for extractor in self.extractors
         ]
-        metadata_extracted = await gather(*coros)  # pyright: ignore
+
+        try:
+            metadata_extracted = await gather(*coros)  # pyright: ignore
+            logger.debug(
+                f"Successfully extracted metadata from {len(self.extractors)} extractors for conversation {conversation.chat_id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to extract metadata for conversation {conversation.chat_id}: {e}"
+            )
+            raise
 
         metadata = {}
         for result in metadata_extracted:
             if isinstance(result, ExtractedProperty):
                 if result.name in metadata:
+                    logger.error(
+                        f"Duplicate metadata name: {result.name} for conversation {conversation.chat_id}"
+                    )
                     raise ValueError(
                         f"Duplicate metadata name: {result.name}. Please use unique names for each metadata property."
                     )
@@ -221,11 +293,17 @@ class SummaryModel(BaseSummaryModel):
                 for extracted_property in result:
                     assert isinstance(extracted_property, ExtractedProperty)
                     if extracted_property.name in metadata:
+                        logger.error(
+                            f"Duplicate metadata name: {extracted_property.name} for conversation {conversation.chat_id}"
+                        )
                         raise ValueError(
                             f"Duplicate metadata name: {extracted_property.name}. Please use unique names for each metadata property."
                         )
                     metadata[extracted_property.name] = extracted_property.value
 
+        logger.debug(
+            f"Extracted {len(metadata)} metadata properties for conversation {conversation.chat_id}"
+        )
         return metadata
 
     async def summarise_conversation(
@@ -240,14 +318,19 @@ class SummaryModel(BaseSummaryModel):
 
         It is designed to be used in a pipeline to summarise conversations and extract metadata.
         """
+        logger.debug(
+            f"Starting summarization of conversation {conversation.chat_id} with {len(conversation.messages)} messages"
+        )
+
         client = instructor.from_provider(self.model, async_client=True)
         async with self.semaphore:  # type: ignore
-            resp = await client.chat.completions.create(  # type: ignore
-                temperature=0.2, # as per the Clio paper
-                messages=[
-                    {
-                        "role": "user",
-                        "content": """
+            try:
+                resp = await client.chat.completions.create(  # type: ignore
+                    temperature=0.2,  # as per the Clio paper
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": """
 The following is a conversation between an AI assistant and a user:
 
 <messages>
@@ -272,7 +355,7 @@ Extract the following information:
 
 5. **Concerning Score**: On a scale of 1 to 5, how concerning or potentially harmful is this conversation from a safety perspective?
    - 1: Not concerning at all. Completely benign conversation.
-   - 2: Slightly concerning, but likely harmless.  
+   - 2: Slightly concerning, but likely harmless.
    - 3: Moderately concerning. May warrant a closer look.
    - 4: Very concerning. Likely needs review.
    - 5: Extremely concerning. Immediate review needed.
@@ -283,9 +366,9 @@ Extract the following information:
    - 3: Moderately frustrated. The user is moderately annoyed with the assistant.
    - 4: Very frustrated. The user is very annoyed with the assistant.
    - 5: Extremely frustrated. The user is extremely annoyed with the assistant.
-   
+
 7. **Assistant Errors**: What errors did the assistant make?
-   Example: 
+   Example:
     - "Responses were too long and verbose"
     - "Misunderstood the user's intent or request"
     - "Used wrong tool for the task"
@@ -300,14 +383,32 @@ Remember that
 - Make sure to omit any personally identifiable information (PII), like names, locations, phone numbers, email addressess, company names and so on.
 - Make sure to indicate specific details such as programming languages, frameworks, libraries and so on which are relevant to the task.
                         """,
-                    },
-                ],
-                context={"messages": conversation.messages},
-                response_model=GeneratedSummary,
-            )
+                        },
+                    ],
+                    context={"messages": conversation.messages},
+                    response_model=GeneratedSummary,
+                )
+                logger.debug(
+                    f"Successfully generated summary for conversation {conversation.chat_id}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to generate summary for conversation {conversation.chat_id}: {e}"
+                )
+                raise
 
-        metadata = await self.apply_hooks(conversation)
-        return ConversationSummary(
+        try:
+            metadata = await self.apply_hooks(conversation)
+            logger.debug(
+                f"Successfully applied hooks for conversation {conversation.chat_id}"
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to apply hooks for conversation {conversation.chat_id}: {e}"
+            )
+            raise
+
+        summary = ConversationSummary(
             chat_id=conversation.chat_id,
             summary=resp.summary,
             request=resp.request,
@@ -322,3 +423,8 @@ Remember that
                 **metadata,
             },
         )
+
+        logger.debug(
+            f"Completed summarization of conversation {conversation.chat_id} - concerning_score: {resp.concerning_score}, user_frustration: {resp.user_frustration}"
+        )
+        return summary

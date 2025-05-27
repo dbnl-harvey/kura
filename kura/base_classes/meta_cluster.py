@@ -8,7 +8,7 @@ class BaseMetaClusterModel(ABC):
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
         pass
-    
+
     @abstractmethod
     async def reduce_clusters(self, clusters: list[Cluster]) -> list[Cluster]:
         pass
