@@ -24,15 +24,7 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
         )
 
     def slug(self):
-        return f"openai:{self.model_name}-batchsize:{self.model_batch_size}-concurrent:{self.n_concurrent_jobs}"
-
-    @property
-    def model_batch_size(self) -> int:
-        return self._model_batch_size
-
-    @property
-    def n_concurrent_jobs(self) -> int:
-        return self._n_concurrent_jobs
+        return f"openai:{self.model_name}-batchsize:{self._model_batch_size}-concurrent:{self._n_concurrent_jobs}"
 
     @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
     async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
@@ -62,9 +54,9 @@ class OpenAIEmbeddingModel(BaseEmbeddingModel):
         logger.info(f"Starting embedding of {len(texts)} texts using {self.model_name}")
 
         # Create batches
-        batches = _batch_texts(texts, self.model_batch_size)
+        batches = _batch_texts(texts, self._model_batch_size)
         logger.debug(
-            f"Split {len(texts)} texts into {len(batches)} batches of size {self.model_batch_size}"
+            f"Split {len(texts)} texts into {len(batches)} batches of size {self._model_batch_size}"
         )
 
         # Process all batches concurrently
@@ -101,24 +93,24 @@ def _batch_texts(texts: list[str], batch_size: int) -> list[list[str]]:
 
 class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
     def __init__(
-        self, model_name: str = "all-MiniLM-L6-v2", model_batch_size: int = 128
+        self,
+        model_name: str = "all-MiniLM-L6-v2",
+        model_batch_size: int = 128,
+        n_concurrent_jobs: int = 5,
     ):
         from sentence_transformers import SentenceTransformer
 
         logger.info(
-            f"Initializing SentenceTransformerEmbeddingModel with model={model_name}, batch_size={model_batch_size}"
+            f"Initializing SentenceTransformerEmbeddingModel with model={model_name}, batch_size={model_batch_size}, concurrent_jobs={n_concurrent_jobs}"
         )
         try:
             self.model = SentenceTransformer(model_name)
             self._model_batch_size = model_batch_size
+            self._n_concurrent_jobs = n_concurrent_jobs
             logger.info(f"Successfully loaded SentenceTransformer model: {model_name}")
         except Exception as e:
             logger.error(f"Failed to load SentenceTransformer model {model_name}: {e}")
             raise
-
-    @property
-    def model_batch_size(self) -> int:
-        return self._model_batch_size
 
     @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
     async def embed(self, texts: list[str]) -> list[list[float]]:
@@ -131,9 +123,9 @@ class SentenceTransformerEmbeddingModel(BaseEmbeddingModel):
         )
 
         # Create batches
-        batches = _batch_texts(texts, self.model_batch_size)
+        batches = _batch_texts(texts, self._model_batch_size)
         logger.debug(
-            f"Split {len(texts)} texts into {len(batches)} batches of size {self.model_batch_size}"
+            f"Split {len(texts)} texts into {len(batches)} batches of size {self._model_batch_size}"
         )
 
         # Process all batches
