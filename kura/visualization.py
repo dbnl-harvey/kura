@@ -17,6 +17,7 @@ try:
     from rich.text import Text
     from rich.align import Align
     from rich.box import ROUNDED
+
     RICH_AVAILABLE = True
 except ImportError:
     Console = None
@@ -34,17 +35,17 @@ if TYPE_CHECKING:
 
 class ClusterVisualizer:
     """Handles visualization of hierarchical cluster structures."""
-    
-    def __init__(self, kura_instance: 'Kura'):
+
+    def __init__(self, kura_instance: "Kura"):
         """Initialize the visualizer with a Kura instance.
-        
+
         Args:
             kura_instance: The Kura instance containing cluster data and configuration
         """
         self.kura = kura_instance
         self.console = kura_instance.console
         self.meta_cluster_model = kura_instance.meta_cluster_model
-    
+
     def _build_tree_structure(
         self,
         node: ClusterTreeNode,
@@ -54,16 +55,16 @@ class ClusterVisualizer:
         prefix: str = "",
     ) -> str:
         """Build a text representation of the hierarchical cluster tree.
-        
+
         This is a recursive helper method used by visualise_clusters().
-        
+
         Args:
             node: Current tree node
             node_id_to_cluster: Dictionary mapping node IDs to nodes
             level: Current depth in the tree (for indentation)
             is_last: Whether this is the last child of its parent
             prefix: Current line prefix for tree structure
-            
+
         Returns:
             String representation of the tree structure
         """
@@ -86,9 +87,13 @@ class ClusterVisualizer:
         child_prefix = prefix
         if level > 0:
             if is_last:
-                child_prefix += "    "  # No vertical line needed for last child's children
+                child_prefix += (
+                    "    "  # No vertical line needed for last child's children
+                )
             else:
-                child_prefix += "║   "  # Continue vertical line for non-last child's children
+                child_prefix += (
+                    "║   "  # Continue vertical line for non-last child's children
+                )
 
         # Process children
         children = node.children
@@ -103,12 +108,12 @@ class ClusterVisualizer:
 
     def visualise_clusters(self):
         """Print a hierarchical visualization of clusters to the terminal.
-        
+
         This method loads clusters from the meta_cluster_checkpoint file,
         builds a tree representation, and prints it to the console.
         The visualization shows the hierarchical relationship between clusters
         with indentation and tree structure symbols.
-        
+
         Example output:
         ╠══ Compare and improve Flutter and React state management (45 conversations)
         ║   ╚══ Improve and compare Flutter and React state management (32 conversations)
@@ -164,7 +169,7 @@ class ClusterVisualizer:
         total_conversations: int = 0,
     ) -> str:
         """Build an enhanced text representation with colors and better formatting.
-        
+
         Args:
             node: Current tree node
             node_id_to_cluster: Dictionary mapping node IDs to nodes
@@ -172,14 +177,20 @@ class ClusterVisualizer:
             is_last: Whether this is the last child of its parent
             prefix: Current line prefix for tree structure
             total_conversations: Total conversations for percentage calculation
-            
+
         Returns:
             String representation of the enhanced tree structure
         """
         # Color scheme based on level
-        colors = ["bright_cyan", "bright_green", "bright_yellow", "bright_magenta", "bright_blue"]
+        colors = [
+            "bright_cyan",
+            "bright_green",
+            "bright_yellow",
+            "bright_magenta",
+            "bright_blue",
+        ]
         colors[level % len(colors)]
-        
+
         # Current line prefix (used for tree visualization symbols)
         current_prefix = prefix
 
@@ -191,21 +202,31 @@ class ClusterVisualizer:
                 current_prefix += "╠══ "
 
         # Calculate percentage of total conversations
-        percentage = (node.count / total_conversations * 100) if total_conversations > 0 else 0
-        
+        percentage = (
+            (node.count / total_conversations * 100) if total_conversations > 0 else 0
+        )
+
         # Create progress bar for visual representation
         bar_width = 20
-        filled_width = int((node.count / total_conversations) * bar_width) if total_conversations > 0 else 0
+        filled_width = (
+            int((node.count / total_conversations) * bar_width)
+            if total_conversations > 0
+            else 0
+        )
         progress_bar = "█" * filled_width + "░" * (bar_width - filled_width)
-        
+
         # Build the line with enhanced formatting
         result = f"{current_prefix}🔸 {node.name}\n"
         result += f"{prefix}{'║   ' if not is_last and level > 0 else '    '}📊 {node.count:,} conversations ({percentage:.1f}%) [{progress_bar}]\n"
-        
+
         # Add description if available and not too long
-        if hasattr(node, 'description') and node.description and len(node.description) < 100:
+        if (
+            hasattr(node, "description")
+            and node.description
+            and len(node.description) < 100
+        ):
             result += f"{prefix}{'║   ' if not is_last and level > 0 else '    '}💭 {node.description}\n"
-        
+
         result += "\n"
 
         # Calculate the prefix for children
@@ -222,26 +243,33 @@ class ClusterVisualizer:
             child = node_id_to_cluster[child_id]
             is_last_child = i == len(children) - 1
             result += self._build_enhanced_tree_structure(
-                child, node_id_to_cluster, level + 1, is_last_child, child_prefix, total_conversations
+                child,
+                node_id_to_cluster,
+                level + 1,
+                is_last_child,
+                child_prefix,
+                total_conversations,
             )
 
         return result
 
     def visualise_clusters_enhanced(self):
         """Print an enhanced hierarchical visualization of clusters with colors and statistics.
-        
+
         This method provides a more detailed visualization than visualise_clusters(),
         including conversation counts, percentages, progress bars, and descriptions.
         """
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🎯 ENHANCED CLUSTER VISUALIZATION")
-        print("="*80)
-        
+        print("=" * 80)
+
         with open(self.kura.meta_cluster_checkpoint_path) as f:
             clusters = [Cluster.model_validate_json(line) for line in f]
 
         node_id_to_cluster = {}
-        total_conversations = sum(len(node.chat_ids) for node in clusters if not node.parent_id)
+        total_conversations = sum(
+            len(node.chat_ids) for node in clusters if not node.parent_id
+        )
 
         for node in clusters:
             node_id_to_cluster[node.id] = ClusterTreeNode(
@@ -274,26 +302,30 @@ class ClusterVisualizer:
         )
 
         print(tree_output)
-        
+
         # Add summary statistics
-        print("="*80)
+        print("=" * 80)
         print("📈 CLUSTER STATISTICS")
-        print("="*80)
+        print("=" * 80)
         print(f"📊 Total Clusters: {len(clusters)}")
         print(f"🌳 Root Clusters: {len(root_nodes)}")
         print(f"💬 Total Conversations: {total_conversations:,}")
-        print(f"📏 Average Conversations per Root Cluster: {total_conversations/len(root_nodes):.1f}")
-        print("="*80 + "\n")
+        print(
+            f"📏 Average Conversations per Root Cluster: {total_conversations / len(root_nodes):.1f}"
+        )
+        print("=" * 80 + "\n")
 
     def visualise_clusters_rich(self):
         """Print a rich-formatted hierarchical visualization using Rich library.
-        
-        This method provides the most visually appealing output with colors, 
+
+        This method provides the most visually appealing output with colors,
         interactive-style formatting, and comprehensive statistics when Rich is available.
         Falls back to enhanced visualization if Rich is not available.
         """
         if not RICH_AVAILABLE or not self.console:
-            print("⚠️  Rich library not available or console disabled. Using enhanced visualization...")
+            print(
+                "⚠️  Rich library not available or console disabled. Using enhanced visualization..."
+            )
             self.visualise_clusters_enhanced()
             return
 
@@ -302,7 +334,9 @@ class ClusterVisualizer:
 
         # Build cluster tree structure
         node_id_to_cluster = {}
-        total_conversations = sum(len(node.chat_ids) for node in clusters if not node.parent_id)
+        total_conversations = sum(
+            len(node.chat_ids) for node in clusters if not node.parent_id
+        )
 
         for node in clusters:
             node_id_to_cluster[node.id] = ClusterTreeNode(
@@ -319,13 +353,15 @@ class ClusterVisualizer:
 
         # Create Rich Tree
         if Tree is None:
-            print("⚠️  Rich Tree component not available. Using enhanced visualization...")
+            print(
+                "⚠️  Rich Tree component not available. Using enhanced visualization..."
+            )
             self.visualise_clusters_enhanced()
             return
-            
+
         tree = Tree(
             f"[bold bright_cyan]📚 All Clusters ({total_conversations:,} conversations)[/]",
-            style="bold bright_cyan"
+            style="bold bright_cyan",
         )
 
         # Add root clusters to tree
@@ -336,26 +372,44 @@ class ClusterVisualizer:
         def add_node_to_tree(rich_tree, cluster_node, level=0):
             """Recursively add nodes to Rich tree with formatting."""
             # Color scheme based on level
-            colors = ["bright_green", "bright_yellow", "bright_magenta", "bright_blue", "bright_red"]
+            colors = [
+                "bright_green",
+                "bright_yellow",
+                "bright_magenta",
+                "bright_blue",
+                "bright_red",
+            ]
             color = colors[level % len(colors)]
-            
+
             # Calculate percentage
-            percentage = (cluster_node.count / total_conversations * 100) if total_conversations > 0 else 0
-            
+            percentage = (
+                (cluster_node.count / total_conversations * 100)
+                if total_conversations > 0
+                else 0
+            )
+
             # Create progress bar representation
             bar_width = 15
-            filled_width = int((cluster_node.count / total_conversations) * bar_width) if total_conversations > 0 else 0
+            filled_width = (
+                int((cluster_node.count / total_conversations) * bar_width)
+                if total_conversations > 0
+                else 0
+            )
             progress_bar = "█" * filled_width + "░" * (bar_width - filled_width)
-            
+
             # Create node label with rich formatting
             label = f"[bold {color}]{cluster_node.name}[/] [dim]({cluster_node.count:,} conversations, {percentage:.1f}%)[/]"
-            if hasattr(cluster_node, 'description') and cluster_node.description:
-                short_desc = cluster_node.description[:80] + "..." if len(cluster_node.description) > 80 else cluster_node.description
+            if hasattr(cluster_node, "description") and cluster_node.description:
+                short_desc = (
+                    cluster_node.description[:80] + "..."
+                    if len(cluster_node.description) > 80
+                    else cluster_node.description
+                )
                 label += f"\n[italic dim]{short_desc}[/]"
             label += f"\n[dim]Progress: [{progress_bar}][/]"
-            
+
             node = rich_tree.add(label)
-            
+
             # Add children
             for child_id in cluster_node.children:
                 child = node_id_to_cluster[child_id]
@@ -372,21 +426,29 @@ class ClusterVisualizer:
             return
 
         # Create statistics table
-        stats_table = Table(title="📈 Cluster Statistics", box=ROUNDED, title_style="bold bright_cyan")
+        stats_table = Table(
+            title="📈 Cluster Statistics", box=ROUNDED, title_style="bold bright_cyan"
+        )
         stats_table.add_column("Metric", style="bold bright_yellow")
         stats_table.add_column("Value", style="bright_green")
-        
+
         stats_table.add_row("📊 Total Clusters", f"{len(clusters):,}")
         stats_table.add_row("🌳 Root Clusters", f"{len(root_nodes):,}")
         stats_table.add_row("💬 Total Conversations", f"{total_conversations:,}")
-        stats_table.add_row("📏 Avg per Root Cluster", f"{total_conversations/len(root_nodes):.1f}")
-        
+        stats_table.add_row(
+            "📏 Avg per Root Cluster", f"{total_conversations / len(root_nodes):.1f}"
+        )
+
         # Create cluster size distribution table
-        size_table = Table(title="📊 Cluster Size Distribution", box=ROUNDED, title_style="bold bright_magenta")
+        size_table = Table(
+            title="📊 Cluster Size Distribution",
+            box=ROUNDED,
+            title_style="bold bright_magenta",
+        )
         size_table.add_column("Size Range", style="bold bright_yellow")
         size_table.add_column("Count", style="bright_green")
         size_table.add_column("Percentage", style="bright_blue")
-        
+
         # Calculate size distribution for root clusters
         root_sizes = [node.count for node in root_nodes]
         size_ranges = [
@@ -395,7 +457,7 @@ class ClusterVisualizer:
             ("📊 Small (6-20)", lambda x: 6 <= x <= 20),
             ("🔍 Tiny (1-5)", lambda x: 1 <= x <= 5),
         ]
-        
+
         for range_name, condition in size_ranges:
             count = sum(1 for size in root_sizes if condition(size))
             percentage = (count / len(root_sizes) * 100) if root_sizes else 0
@@ -404,23 +466,30 @@ class ClusterVisualizer:
         # Display everything
         if self.console:
             self.console.print("\n")
-            
+
             # Only use Panel and Align if they're available
             if Panel is not None and Align is not None and Text is not None:
-                self.console.print(Panel(
-                    Align.center(Text("🎯 RICH CLUSTER VISUALIZATION", style="bold bright_cyan")),
-                    box=ROUNDED,
-                    style="bright_cyan"
-                ))
+                self.console.print(
+                    Panel(
+                        Align.center(
+                            Text(
+                                "🎯 RICH CLUSTER VISUALIZATION",
+                                style="bold bright_cyan",
+                            )
+                        ),
+                        box=ROUNDED,
+                        style="bright_cyan",
+                    )
+                )
             else:
                 self.console.print("[bold bright_cyan]🎯 RICH CLUSTER VISUALIZATION[/]")
-                
+
             self.console.print("\n")
             self.console.print(tree)
             self.console.print("\n")
-            
+
             # Display tables side by side if Table.grid is available
-            if hasattr(Table, 'grid'):
+            if hasattr(Table, "grid"):
                 layout = Table.grid(padding=2)
                 layout.add_column()
                 layout.add_column()
@@ -430,5 +499,5 @@ class ClusterVisualizer:
                 # Fallback to printing tables separately
                 self.console.print(stats_table)
                 self.console.print(size_table)
-                
+
             self.console.print("\n")

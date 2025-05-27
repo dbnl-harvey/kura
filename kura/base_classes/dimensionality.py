@@ -9,7 +9,7 @@ class BaseDimensionalityReduction(ABC):
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
         pass
-    
+
     @abstractmethod
     async def reduce_dimensionality(
         self, clusters: list[Cluster]

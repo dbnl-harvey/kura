@@ -21,6 +21,7 @@ from kura.types import ConversationSummary
 # Try to import Rich, fall back gracefully if not available
 try:
     from rich.console import Console
+
     RICH_AVAILABLE = True
 except ImportError:
     Console = None
@@ -31,17 +32,17 @@ T = TypeVar("T", bound=BaseModel)
 
 class Kura:
     """Main class for the Kura conversation analysis pipeline.
-    
+
     Kura is a tool for analyzing conversation data using a multi-step process of
     summarization, embedding, clustering, meta-clustering, and visualization.
     This class coordinates the entire pipeline and manages checkpointing.
-    
+
     For cleaner output without progress bars:
         kura = Kura(disable_progress=True)
-    
+
     Or to disable Rich console entirely:
         kura = Kura(console=None)
-    
+
     Attributes:
         embedding_model: Model for converting text to vector embeddings
         summarisation_model: Model for generating summaries from conversations
@@ -50,7 +51,7 @@ class Kura:
         dimensionality_reduction: Model for projecting clusters to 2D space
         checkpoint_dir: Directory for saving intermediate results
     """
-    
+
     def __init__(
         self,
         embedding_model: Union[BaseEmbeddingModel, None] = None,
@@ -61,12 +62,12 @@ class Kura:
         checkpoint_dir: str = "./checkpoints",
         conversation_checkpoint_name: str = "conversations.json",
         disable_checkpoints: bool = False,
-        console: Optional['Console'] = None, # type: ignore
+        console: Optional["Console"] = None,  # type: ignore
         disable_progress: bool = False,
-        **kwargs, # For future use
+        **kwargs,  # For future use
     ):
         """Initialize a new Kura instance with custom or default components.
-        
+
         Args:
             embedding_model: Model to convert text to vector embeddings (default: OpenAIEmbeddingModel)
             summarisation_model: Model to generate summaries from conversations (default: SummaryModel)
@@ -79,88 +80,98 @@ class Kura:
             disable_checkpoints: Whether to disable checkpoint loading/saving (default: False)
             console: Optional Rich console instance to use for output (default: None, will create if Rich is available)
             disable_progress: Whether to disable all progress bars for cleaner output (default: False)
-            
+
         Note:
-            Checkpoint filenames for individual processing steps (summaries, clusters, meta-clusters, 
+            Checkpoint filenames for individual processing steps (summaries, clusters, meta-clusters,
             dimensionality reduction) are now defined as properties in their respective base classes
             rather than constructor arguments.
         """
         # Initialize Rich console if available and not provided
         if console is None and RICH_AVAILABLE and not disable_progress and Console:
-            self.console =  Console()
+            self.console = Console()
         else:
             self.console = console
-        
+
         # Store progress settings
         self.disable_progress = disable_progress
-        
+
         # Initialize models with console
         if embedding_model is None:
             self.embedding_model = OpenAIEmbeddingModel()
         else:
             self.embedding_model = embedding_model
-            
+
         console_to_pass = self.console if not disable_progress else None
-            
+
         if summarisation_model is None:
             self.summarisation_model = SummaryModel(console=console_to_pass, **kwargs)
         else:
             self.summarisation_model = summarisation_model
-            
+
         if cluster_model is None:
             self.cluster_model = ClusterModel(console=console_to_pass, **kwargs)
         else:
             self.cluster_model = cluster_model
-            
+
         if meta_cluster_model is None:
             # Pass max_clusters to MetaClusterModel if provided
-            self.meta_cluster_model = MetaClusterModel(console=console_to_pass, **kwargs)
+            self.meta_cluster_model = MetaClusterModel(
+                console=console_to_pass, **kwargs
+            )
         else:
             self.meta_cluster_model = meta_cluster_model
         self.dimensionality_reduction = dimensionality_reduction
 
         # Define Checkpoints
         self.checkpoint_dir = checkpoint_dir
-        
+
         # Helper to construct checkpoint paths
         def _checkpoint_path(filename: str) -> str:
             return os.path.join(self.checkpoint_dir, filename)
-        
-        self.conversation_checkpoint_name = _checkpoint_path(conversation_checkpoint_name)
+
+        self.conversation_checkpoint_name = _checkpoint_path(
+            conversation_checkpoint_name
+        )
         self.disable_checkpoints = disable_checkpoints
-        
+
         # Initialize visualizer
         self._visualizer = None
 
     @property
     def summary_checkpoint_path(self) -> str:
         """Get the checkpoint path for summaries based on the summarisation model."""
-        return os.path.join(self.checkpoint_dir, self.summarisation_model.checkpoint_filename)
-    
+        return os.path.join(
+            self.checkpoint_dir, self.summarisation_model.checkpoint_filename
+        )
+
     @property
     def cluster_checkpoint_path(self) -> str:
         """Get the checkpoint path for clusters based on the cluster model."""
         return os.path.join(self.checkpoint_dir, self.cluster_model.checkpoint_filename)
-    
+
     @property
     def meta_cluster_checkpoint_path(self) -> str:
         """Get the checkpoint path for meta-clusters based on the meta-cluster model."""
-        return os.path.join(self.checkpoint_dir, self.meta_cluster_model.checkpoint_filename)
-    
+        return os.path.join(
+            self.checkpoint_dir, self.meta_cluster_model.checkpoint_filename
+        )
+
     @property
     def dimensionality_checkpoint_path(self) -> str:
         """Get the checkpoint path for dimensionality reduction based on the dimensionality model."""
-        return os.path.join(self.checkpoint_dir, self.dimensionality_reduction.checkpoint_filename)
+        return os.path.join(
+            self.checkpoint_dir, self.dimensionality_reduction.checkpoint_filename
+        )
 
     def load_checkpoint(
         self, checkpoint_path: str, response_model: type[T]
     ) -> Union[list[T], None]:
         """Load data from a checkpoint file if it exists.
-        
+
         Args:
             checkpoint_path: Path to the checkpoint file
             response_model: Pydantic model class for deserializing the data
-            
+
         Returns:
             List of model instances if checkpoint exists, None otherwise
         """
@@ -175,7 +186,7 @@ class Kura:
 
     def save_checkpoint(self, checkpoint_path: str, data: list[T]) -> None:
         """Save data to a checkpoint file.
-        
+
         Args:
             checkpoint_path: Path to the checkpoint file
             data: List of model instances to save
@@ -187,7 +198,7 @@ class Kura:
 
     def setup_checkpoint_dir(self):
         """Set up the checkpoint directory.
-        
+
         Creates the checkpoint directory if it doesn't exist.
         If override_checkpoint_dir is True, removes and recreates the directory.
         """
@@ -199,13 +210,13 @@ class Kura:
 
     async def reduce_clusters(self, clusters: list[Cluster]) -> list[Cluster]:
         """Reduce clusters into a hierarchical structure.
-        
+
         Iteratively combines similar clusters until the number of root clusters
         is less than or equal to the meta_cluster_model's max_clusters.
-        
+
         Args:
             clusters: List of initial clusters
-            
+
         Returns:
             List of clusters with hierarchical structure
         """
@@ -219,7 +230,7 @@ class Kura:
 
         print(f"Starting with {len(root_clusters)} clusters")
 
-        while len(root_clusters) > self.meta_cluster_model.max_clusters: #type: ignore
+        while len(root_clusters) > self.meta_cluster_model.max_clusters:  # type: ignore
             # We get the updated list of clusters
             new_current_level = await self.meta_cluster_model.reduce_clusters(
                 root_clusters
@@ -244,13 +255,13 @@ class Kura:
         self, conversations: list[Conversation]
     ) -> list[ConversationSummary]:
         """Generate summaries for a list of conversations.
-        
+
         Uses the summarisation_model to generate summaries for each conversation.
         Loads from checkpoint if available.
-        
+
         Args:
             conversations: List of conversations to summarize
-            
+
         Returns:
             List of conversation summaries
         """
@@ -264,21 +275,21 @@ class Kura:
         self.save_checkpoint(self.summary_checkpoint_path, summaries)
         return summaries
 
-    async def generate_base_clusters(self, summaries: list[ConversationSummary]) -> list[Cluster]:
+    async def generate_base_clusters(
+        self, summaries: list[ConversationSummary]
+    ) -> list[Cluster]:
         """Generate base clusters from summaries.
-        
+
         Uses the cluster_model to group similar summaries into clusters.
         Loads from checkpoint if available.
-        
+
         Args:
             summaries: List of conversation summaries
-            
+
         Returns:
             List of base clusters
         """
-        checkpoint_items = self.load_checkpoint(
-            self.cluster_checkpoint_path, Cluster
-        )
+        checkpoint_items = self.load_checkpoint(self.cluster_checkpoint_path, Cluster)
         if checkpoint_items:
             return checkpoint_items
 
@@ -290,13 +301,13 @@ class Kura:
         self, clusters: list[Cluster]
     ) -> list[ProjectedCluster]:
         """Reduce dimensions of clusters for visualization.
-        
+
         Uses dimensionality_reduction to project clusters to 2D space.
         Loads from checkpoint if available.
-        
+
         Args:
             clusters: List of clusters to project
-            
+
         Returns:
             List of projected clusters with 2D coordinates
         """
@@ -315,9 +326,11 @@ class Kura:
         )
         return dimensionality_reduced_clusters
 
-    async def cluster_conversations(self, conversations: list[Conversation]) -> list[ProjectedCluster]:
+    async def cluster_conversations(
+        self, conversations: list[Conversation]
+    ) -> list[ProjectedCluster]:
         """Run the full clustering pipeline on a list of conversations.
-        
+
         This is the main method that orchestrates the entire Kura pipeline:
         1. Set up checkpoints directory
         2. Save raw conversations
@@ -325,10 +338,10 @@ class Kura:
         4. Create base clusters
         5. Create hierarchical meta-clusters
         6. Project clusters to 2D for visualization
-        
+
         Args:
             conversations: List of conversations to process
-            
+
         Returns:
             List of projected clusters with 2D coordinates
         """
@@ -358,21 +371,21 @@ class Kura:
 
     def visualise_clusters(self):
         """Print a hierarchical visualization of clusters to the terminal.
-        
+
         Delegates to the ClusterVisualizer for the actual visualization.
         """
         self.visualizer.visualise_clusters()
-    
+
     def visualise_clusters_enhanced(self):
         """Print an enhanced hierarchical visualization of clusters.
-        
+
         Delegates to the ClusterVisualizer for the actual visualization.
         """
         self.visualizer.visualise_clusters_enhanced()
-    
+
     def visualise_clusters_rich(self):
         """Print a rich-formatted hierarchical visualization using Rich library.
-        
+
         Delegates to the ClusterVisualizer for the actual visualization.
         """
         self.visualizer.visualise_clusters_rich()

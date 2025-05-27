@@ -11,7 +11,6 @@ from .kura import (
     generate_base_clusters_from_conversation_summaries,
     reduce_clusters_from_base_clusters,
     reduce_dimensionality_from_clusters,
-    
     # Checkpoint management
     CheckpointManager,
 )
@@ -19,12 +18,11 @@ from .kura import (
 __all__ = [
     # Core functions
     "summarise_conversations",
-    "generate_base_clusters_from_conversation_summaries", 
+    "generate_base_clusters_from_conversation_summaries",
     "reduce_clusters_from_base_clusters",
     "reduce_dimensionality_from_clusters",
-    
     # Utilities
     "CheckpointManager",
 ]
 
-__version__ = "1.0.0" 
+__version__ = "1.0.0"

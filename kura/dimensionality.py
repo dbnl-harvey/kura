@@ -27,6 +27,9 @@ class HDBUMAP(BaseDimensionalityReduction):
         self.min_dist = min_dist
         self.metric = metric
         self.n_neighbors = n_neighbors
+        logger.info(
+            f"Initialized HDBUMAP with embedding_model={type(embedding_model).__name__}, n_components={n_components}, min_dist={min_dist}, metric={metric}, n_neighbors={n_neighbors}"
+        )
 
     async def reduce_dimensionality(
         self, clusters: list[Cluster]
@@ -35,32 +38,50 @@ class HDBUMAP(BaseDimensionalityReduction):
         from umap import UMAP
 
         if not clusters:
+            logger.warning("Empty clusters list provided to reduce_dimensionality")
             return []
 
-        texts_to_embed = [
-            f"Name: {c.name}\nDescription: {c.description}" for c in clusters
-        ]
+        logger.info(f"Starting dimensionality reduction for {len(clusters)} clusters")
+        texts_to_embed = [str(c) for c in clusters]
 
-        cluster_embeddings = await self.embedding_model.embed(texts_to_embed)
+        try:
+            cluster_embeddings = await self.embedding_model.embed(texts_to_embed)
+            logger.debug(f"Generated embeddings for {len(clusters)} clusters")
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings for clusters: {e}")
+            raise
 
         if not cluster_embeddings or len(cluster_embeddings) != len(texts_to_embed):
             logger.error(
-                "Error: Number of embeddings does not match number of clusters or embeddings are empty."
+                f"Error: Number of embeddings ({len(cluster_embeddings) if cluster_embeddings else 0}) does not match number of clusters ({len(texts_to_embed)}) or embeddings are empty."
             )
             return []
 
         embeddings = np.array(cluster_embeddings)
+        logger.debug(f"Created embedding matrix of shape {embeddings.shape}")
 
         # Project to 2D using UMAP
-        umap_reducer = UMAP(
-            n_components=self.n_components,
-            n_neighbors=self.n_neighbors
-            if self.n_neighbors
-            else min(15, len(embeddings) - 1),
-            min_dist=self.min_dist,
-            metric=self.metric,
+        n_neighbors_actual = (
+            self.n_neighbors if self.n_neighbors else min(15, len(embeddings) - 1)
         )
-        reduced_embeddings = umap_reducer.fit_transform(embeddings)
+        logger.debug(
+            f"Using UMAP with n_neighbors={n_neighbors_actual}, min_dist={self.min_dist}, metric={self.metric}"
+        )
+
+        try:
+            umap_reducer = UMAP(
+                n_components=self.n_components,
+                n_neighbors=n_neighbors_actual,
+                min_dist=self.min_dist,
+                metric=self.metric,
+            )
+            reduced_embeddings = umap_reducer.fit_transform(embeddings)
+            logger.info(
+                f"UMAP dimensionality reduction completed: {embeddings.shape} -> {reduced_embeddings.shape}"
+            )
+        except Exception as e:
+            logger.error(f"UMAP dimensionality reduction failed: {e}")
+            raise
 
         # Create projected clusters with 2D coordinates
         res = []
@@ -79,4 +100,5 @@ class HDBUMAP(BaseDimensionalityReduction):
             )
             res.append(projected)
 
+        logger.info(f"Successfully created {len(res)} projected clusters")
         return res

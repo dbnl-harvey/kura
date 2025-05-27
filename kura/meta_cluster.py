@@ -14,6 +14,7 @@ from pydantic import BaseModel, field_validator, ValidationInfo
 import re
 from thefuzz import fuzz
 import asyncio
+import logging
 from typing import Optional, Union
 
 # Rich imports handled by Kura base class
@@ -21,6 +22,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 
 class CandidateClusters(BaseModel):
@@ -101,13 +104,15 @@ class MetaClusterModel(BaseMetaClusterModel):
         self.model = model
         self.console = console
 
+        logger.info(
+            f"Initialized MetaClusterModel with model={model}, max_concurrent_requests={max_concurrent_requests}, embedding_model={type(embedding_model).__name__}, clustering_model={type(clustering_model).__name__}, max_clusters={max_clusters}"
+        )
+
         # Debug: Check if console is set
         if self.console:
-            print(f"MetaClusterModel: Console is set to {type(self.console)}")
+            logger.debug(f"Console is set to {type(self.console)}")
         else:
-            print(
-                "MetaClusterModel: Console is None - Rich progress bars will not be available"
-            )
+            logger.debug("Console is None - Rich progress bars will not be available")
 
     async def _gather_with_progress(
         self,
@@ -606,8 +611,7 @@ Based on this information, determine the most appropriate higher-level cluster a
             return []
 
         if len(clusters) == 1:
-            if self.console:
-                self.console.print("Only one cluster, returning it as a meta cluster")
+            logger.info("Only one cluster, returning it as a meta cluster")
             new_cluster = Cluster(
                 name=clusters[0].name,
                 description=clusters[0].description,
@@ -616,44 +620,18 @@ Based on this information, determine the most appropriate higher-level cluster a
             )
             return [new_cluster, clusters[0]]
 
-        texts_to_embed = [
-            f"""
-Name: {cluster.name}
-Description: {cluster.description}
-            """.strip()
-            for cluster in clusters
-        ]
+        texts_to_embed = [str(cluster) for cluster in clusters]
 
-        if self.console:
-            self.console.print(
-                f"[cyan]Embedding {len(texts_to_embed)} clusters for meta-clustering using {type(self.embedding_model).__name__}..."
-            )
+        logger.info(
+            f"Embedding {len(texts_to_embed)} clusters for meta-clustering using {type(self.embedding_model).__name__}..."
+        )
 
-        # Manually batch and use asyncio.gather
-        batch_size = self.embedding_model.model_batch_size
-        tasks = []
-        for i in range(0, len(texts_to_embed), batch_size):
-            batch = texts_to_embed[i : i + batch_size]
-            tasks.append(self.embedding_model.embed(batch))
-
-        results_list_of_lists = await asyncio.gather(
-            *tasks
-        )  # Progress bar removed for now
-
-        cluster_embeddings: list[list[float]] = []
-        for result_batch in results_list_of_lists:
-            cluster_embeddings.extend(result_batch)
-
-        if self.console:
-            self.console.print(
-                f"[green]Finished embedding {len(cluster_embeddings)} clusters for meta-clustering."
-            )
+        cluster_embeddings = await self.embedding_model.embed(texts_to_embed)
 
         if not cluster_embeddings or len(cluster_embeddings) != len(clusters):
-            if self.console:
-                self.console.print(
-                    "[red]Error: Number of embeddings does not match number of clusters or embeddings are empty for meta-clustering."
-                )
+            logger.error(
+                "Error: Number of embeddings does not match number of clusters or embeddings are empty for meta-clustering."
+            )
             return []
 
         clusters_and_embeddings = [

@@ -9,7 +9,7 @@ class BaseClusterModel(ABC):
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
         pass
-    
+
     @abstractmethod
     async def cluster_summaries(
         self, summaries: list[ConversationSummary]

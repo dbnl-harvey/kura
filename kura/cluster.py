@@ -38,6 +38,9 @@ class ClusterModel(BaseClusterModel):
         self.sem = Semaphore(max_concurrent_requests)
         self.client = instructor.from_provider(model, async_client=True)
         self.console = console
+        logger.info(
+            f"Initialized ClusterModel with clustering_method={type(clustering_method).__name__}, embedding_model={type(embedding_model).__name__}, max_concurrent_requests={max_concurrent_requests}, model={model}"
+        )
 
     def get_contrastive_examples(
         self,
@@ -59,24 +62,40 @@ class ClusterModel(BaseClusterModel):
         for cluster in other_clusters:
             all_examples.extend(cluster_id_to_summaries[cluster])
 
+        logger.debug(
+            f"Selecting contrastive examples for cluster {cluster_id}: found {len(all_examples)} examples from {len(other_clusters)} other clusters"
+        )
+
         # If we don't have enough examples, return all of them
         if len(all_examples) <= limit:
+            logger.debug(
+                f"Using all {len(all_examples)} available contrastive examples (limit was {limit})"
+            )
             return all_examples
 
         # Otherwise sample without replacement
-        return list(np.random.choice(all_examples, size=limit, replace=False))
+        selected = list(np.random.choice(all_examples, size=limit, replace=False))
+        logger.debug(
+            f"Randomly selected {len(selected)} contrastive examples from {len(all_examples)} available"
+        )
+        return selected
 
     async def generate_cluster(
         self,
         summaries: list[ConversationSummary],
         contrastive_examples: list[ConversationSummary],
     ) -> Cluster:
+        logger.debug(
+            f"Generating cluster from {len(summaries)} summaries with {len(contrastive_examples)} contrastive examples"
+        )
+
         async with self.sem:
-            resp = await self.client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """
+            try:
+                resp = await self.client.chat.completions.create(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": """
 You are tasked with summarizing a group of related statements into a short, precise, and accurate description and name. Your goal is to create a concise summary that captures the essence of these statements and distinguishes them from other similar groups of statements.
 
 Summarize all the statements into a clear, precise, two-sentence description in the past tense. Your summary should be specific to this group and distinguish it from the contrastive answers of the other groups.
@@ -109,67 +128,96 @@ For context, here are statements from nearby groups that are NOT part of the gro
 </contrastive_examples>
 
 Do not elaborate beyond what you say in the tags. Remember to analyze both the statements and the contrastive statements carefully to ensure your summary and name accurately represent the specific group while distinguishing it from others.
-                    """,
+                            """,
+                        },
+                        {
+                            "role": "user",
+                            "content": "The cluster name should be a sentence in the imperative that captures the user's request. For example, 'Brainstorm ideas for a birthday party' or 'Help me find a new job.'",
+                        },
+                        {
+                            "role": "assistant",
+                            "content": "Sure, I will provide a clear, precise, and accurate summary and name for this cluster. I will be descriptive and assume neither good nor bad faith. Here is the summary, which I will follow with the name:",
+                        },
+                    ],
+                    response_model=GeneratedCluster,
+                    context={
+                        "positive_examples": summaries,
+                        "contrastive_examples": contrastive_examples,
                     },
-                    {
-                        "role": "user",
-                        "content": "The cluster name should be a sentence in the imperative that captures the user's request. For example, 'Brainstorm ideas for a birthday party' or 'Help me find a new job.'",
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Sure, I will provide a clear, precise, and accurate summary and name for this cluster. I will be descriptive and assume neither good nor bad faith. Here is the summary, which I will follow with the name:",
-                    },
-                ],
-                response_model=GeneratedCluster,
-                context={
-                    "positive_examples": summaries,
-                    "contrastive_examples": contrastive_examples,
-                },
-            )
+                )
 
-            return Cluster(
-                name=resp.name,
-                description=resp.summary,
-                chat_ids=[item.chat_id for item in summaries],
-                parent_id=None,
-            )
+                cluster = Cluster(
+                    name=resp.name,
+                    description=resp.summary,
+                    chat_ids=[item.chat_id for item in summaries],
+                    parent_id=None,
+                )
+
+                logger.debug(
+                    f"Successfully generated cluster '{resp.name}' with {len(summaries)} conversations"
+                )
+                return cluster
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to generate cluster from {len(summaries)} summaries: {e}"
+                )
+                raise
 
     async def _embed_summaries(
         self, summaries: list[ConversationSummary]
     ) -> list[list[float]]:
         """Embeds a list of conversation summaries."""
         if not summaries:
+            logger.debug("Empty summaries list provided for embedding")
             return []
 
+        logger.info(f"Starting embedding of {len(summaries)} conversation summaries")
         texts_to_embed = [str(item) for item in summaries]
 
-        embeddings = await self.embedding_model.embed(texts_to_embed)
+        try:
+            embeddings = await self.embedding_model.embed(texts_to_embed)
+            logger.debug(
+                f"Received {len(embeddings) if embeddings else 0} embeddings from embedding model"
+            )
+        except Exception as e:
+            logger.error(f"Failed to embed {len(summaries)} summaries: {e}")
+            raise
 
         if not embeddings or len(embeddings) != len(summaries):
             logger.error(
-                "Error: Number of embeddings does not match number of summaries or embeddings are empty."
+                f"Error: Number of embeddings ({len(embeddings) if embeddings else 0}) does not match number of summaries ({len(summaries)}) or embeddings are empty."
             )
             return []
 
+        logger.info(f"Successfully embedded {len(summaries)} summaries")
         return embeddings
 
     async def _generate_clusters_from_embeddings(
         self, summaries: list[ConversationSummary], embeddings: list[list[float]]
     ) -> list[Cluster]:
         """Generates clusters from summaries and their embeddings."""
-
-        cluster_id_to_summaries = self.clustering_method.cluster(
-            [
-                {
-                    "item": item,
-                    "embedding": embedding,
-                }
-                for item, embedding in zip(summaries, embeddings)
-            ]
+        logger.info(
+            f"Generating clusters from {len(summaries)} summaries with embeddings"
         )
+
+        # Set embeddings on the summary objects
+        for summary, embedding in zip(summaries, embeddings):
+            summary.embedding = embedding
+
+        logger.debug("Set embeddings on summary objects, starting clustering")
+        cluster_id_to_summaries = self.clustering_method.cluster(summaries)
+        logger.info(
+            f"Clustering method produced {len(cluster_id_to_summaries)} clusters"
+        )
+
         # Create tasks for cluster generation with contrastive examples
         tasks = []
         for cluster_id, conversation_summaries in cluster_id_to_summaries.items():
+            logger.debug(
+                f"Preparing cluster generation for cluster {cluster_id} with {len(conversation_summaries)} summaries"
+            )
+
             # Get contrastive examples from other clusters to help distinguish this cluster
             contrastive_examples = self.get_contrastive_examples(
                 cluster_id=cluster_id,
@@ -184,25 +232,39 @@ Do not elaborate beyond what you say in the tags. Remember to analyze both the s
             )
             tasks.append(task)
 
+        logger.info(f"Starting concurrent generation of {len(tasks)} clusters")
         # Execute all cluster generation tasks concurrently with progress tracking
         clusters: list[Cluster] = await self._gather_with_progress(
             tasks=tasks,
             desc="Generating Base Clusters",
             show_preview=True,
         )
+        logger.info(f"Successfully generated {len(clusters)} clusters")
         return clusters
 
     async def cluster_summaries(
         self, summaries: list[ConversationSummary]
     ) -> list[Cluster]:
         if not summaries:
+            logger.warning("Empty summaries list provided to cluster_summaries")
             return []
+
+        logger.info(
+            f"Starting clustering process for {len(summaries)} conversation summaries"
+        )
 
         embeddings = await self._embed_summaries(summaries)
         if not embeddings:
+            logger.error(
+                "Failed to generate embeddings, cannot proceed with clustering"
+            )
             return []
 
-        return await self._generate_clusters_from_embeddings(summaries, embeddings)
+        clusters = await self._generate_clusters_from_embeddings(summaries, embeddings)
+        logger.info(
+            f"Clustering process completed: generated {len(clusters)} clusters from {len(summaries)} summaries"
+        )
+        return clusters
 
     async def _gather_with_progress(
         self,
