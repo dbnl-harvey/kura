@@ -1,8 +1,21 @@
 #!/bin/bash
 # Script to build and serve the documentation
 
-# Ensure mkdocstrings and other required plugins are installed
-python3 -m pip install mkdocs-material mkdocstrings-python mkdocs-rss-plugin
+# Install uv if not already installed
+if ! command -v uv &> /dev/null; then
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+fi
+
+# Create and activate virtual environment if it doesn't exist
+if [ ! -d ".venv" ]; then
+    uv venv
+fi
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies using uv
+uv pip install -e ".[docs]"
 
 # Build the documentation
 echo "Building documentation..."
