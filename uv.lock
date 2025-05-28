@@ -1001,7 +1001,6 @@ dependencies = [
     { name = "hdbscan" },
     { name = "instructor" },
     { name = "jsonref" },
-    { name = "mkdocs-git-revision-date-localized-plugin" },
     { name = "mkdocs-material-extensions" },
     { name = "mkdocs-rss-plugin" },
     { name = "mkdocstrings", extra = ["python"] },
@@ -1042,7 +1041,6 @@ requires-dist = [
     { name = "hdbscan", specifier = ">=0.8.40" },
     { name = "instructor", specifier = ">=1.8.3" },
     { name = "jsonref", specifier = ">=1.1.0" },
-    { name = "mkdocs-git-revision-date-localized-plugin", specifier = ">=1.4.6" },
     { name = "mkdocs-material-extensions", specifier = ">=1.3.1" },
     { name = "mkdocs-rss-plugin", specifier = ">=1.17.1" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.27.0" },
@@ -1265,21 +1263,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/98/f5/ed29cd50067784976f25ed0ed6fcd3c2ce9eb90650aa3b2796ddf7b6870b/mkdocs_get_deps-0.2.0.tar.gz", hash = "sha256:162b3d129c7fad9b19abfdcb9c1458a651628e4b1dea628ac68790fb3061c60c", size = 10239 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/d4/029f984e8d3f3b6b726bd33cafc473b75e9e44c0f7e80a5b29abc466bdea/mkdocs_get_deps-0.2.0-py3-none-any.whl", hash = "sha256:2bf11d0b133e77a0dd036abeeb06dec8775e46efa526dc70667d8863eefc6134", size = 9521 },
-]
-
-[[package]]
-name = "mkdocs-git-revision-date-localized-plugin"
-version = "1.4.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "babel" },
-    { name = "gitpython" },
-    { name = "mkdocs" },
-    { name = "pytz" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/be/ad/d60ac868e1b734f2b71b5a134323c8097805a004692f0a88bfa358cae6a0/mkdocs_git_revision_date_localized_plugin-1.4.6.tar.gz", hash = "sha256:a09f70e45d5824f89d9f45b39c0ab501ad030a3ff54bfdc6e8327e7b402d9462", size = 450547 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/c4/6c8a4cc930d9c06948e9efd443e672f2f969455e177e3ec865bae7fbd8f7/mkdocs_git_revision_date_localized_plugin-1.4.6-py3-none-any.whl", hash = "sha256:d36e454db0904553274bc3a51e0b5f06d6c03dca946779fca8f905a3b5148f47", size = 25382 },
 ]
 
 [[package]]

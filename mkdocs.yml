@@ -73,7 +73,6 @@ plugins:
             show_if_no_docstring: true
             show_signature_annotations: true
             members_order: source
-  - git-revision-date-localized # Adds Git revision date plugin
 
 markdown_extensions:
   - pymdownx.highlight:
