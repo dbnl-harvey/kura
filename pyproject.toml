@@ -54,7 +54,7 @@ dev = [
 kura = "kura.cli.cli:app"
 
 [tool.pytest.ini_options]
-addopts = "--ignore=tutorial_test/test_tutorial.py"
+addopts = "--ignore=scripts/tutorial_procedural_api.py --ignore=scripts/tutorial_class_api.py"
 
 [tool.pyright]
 include = ["kura"]

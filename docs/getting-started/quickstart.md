@@ -31,38 +31,88 @@ from kura import Kura
 from kura.types import Conversation
 import asyncio
 
-# Initialize Kura with default settings
-kura = Kura()
-
-# Load sample data from Hugging Face
-# This dataset contains ~190 synthetic programming conversations
-# that demonstrate clustering patterns across technical topics
-conversations = Conversation.from_hf_dataset(
-    "ivanleomk/synthetic-gemini-conversations", 
-    split="train"
+# Initialize Kura with default components
+kura = Kura(
+    checkpoint_dir="./tutorial_checkpoints"
 )
 
-# Process the conversations through the pipeline
-asyncio.run(kura.cluster_conversations(conversations))
+# Load sample conversations from Hugging Face
+# This loads 190 synthetic programming conversations
+conversations = Conversation.from_hf_dataset(
+    "ivanleomk/synthetic-gemini-conversations",
+    split="train"
+)
+# Expected output: "Loaded 190 conversations successfully!"
 
-# Visualize the resulting clusters
+# Run the clustering pipeline
+# This will:
+# 1. Generate conversation summaries
+# 2. Create base clusters from summaries
+# 3. Reduce clusters hierarchically
+# 4. Project clusters to 2D for visualization
+asyncio.run(kura.cluster_conversations(conversations))
+# Expected output:
+# "Generated 190 summaries"
+# "Generated 19 base clusters"
+# "Reduced to 29 meta clusters"
+# "Generated 29 projected clusters"
+
+# Visualize the results in the terminal
 kura.visualise_clusters()
+# Expected output: Hierarchical tree showing 10 root clusters
+# with topics like:
+# - Create engaging, SEO-optimized content for online platforms (40 conversations)
+# - Help me visualize and analyze data across platforms (30 conversations)
+# - Troubleshoot and implement authentication in web APIs (22 conversations)
+# ... and more
 ```
 
 This will:
 
-1. Initialize Kura with default models
-2. Load a sample dataset of synthetic conversations
-3. Run the complete analysis pipeline
-4. Display the hierarchical clustering results in the terminal
+1. Initialize Kura with checkpoint directory for saving results
+2. Load 190 synthetic programming conversations from Hugging Face
+3. Process them through the complete analysis pipeline
+4. Generate 29 hierarchical clusters organized into 10 root categories
+5. Display the hierarchical clustering results in the terminal
+
+### Expected Visualization Output
+
+When you run `kura.visualise_clusters()`, you'll see a hierarchical tree view like this:
+
+```
+Clusters (190 conversations)
+╠══ Create engaging, SEO-optimized content for online platforms (40 conversations)
+║   ╠══ Create SEO-focused marketing content for products (8 conversations)
+║   ╠══ Create engaging YouTube video scripts for tutorials (20 conversations)
+║   ╚══ Assist in writing engaging SEO-friendly blog posts (12 conversations)
+╠══ Help me visualize and analyze data across platforms (30 conversations)
+║   ╠══ Assist with R data analysis and visualization issues (9 conversations)
+║   ╠══ Assist with data analysis and visualization in Python (12 conversations)
+║   ╚══ Help me visualize sales data in Tableau (9 conversations)
+╠══ Troubleshoot and implement authentication in web APIs (22 conversations)
+║   ╠══ Guide on implementing JWT authentication in Spring Boot (10 conversations)
+║   ╠══ Troubleshoot API authentication issues in a Flutter app (2 conversations)
+║   ╚══ Assist in troubleshooting Django REST API issues (10 conversations)
+╠══ Improve performance of ETL and real-time data pipelines (21 conversations)
+║   ╠══ Optimize ETL pipelines for performance and quality (9 conversations)
+║   ╚══ Optimize real-time data pipelines using Spark and Kafka (12 conversations)
+... (and more clusters)
+```
 
 ## Using the Web Interface
 
 For a more interactive experience, Kura includes a web interface:
 
 ```bash
-~/D/c/kura (improve-documentation) [1]> kura
+# Start with default checkpoint directory
+kura start-app
 
+# Or use a custom checkpoint directory
+kura start-app --dir ./tutorial_checkpoints
+```
+
+Expected output:
+```
 🚀 Access website at (http://localhost:8000)
 
 INFO:     Started server process [14465]
@@ -72,10 +122,11 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
 Access the web interface at http://localhost:8000 to explore:
-- The cluster map visualization
-- Hierarchical cluster tree
-- Detailed information for each cluster
-- Individual conversations
+- **Cluster Map**: 2D visualization of conversation clusters
+- **Cluster Tree**: Hierarchical view of cluster relationships
+- **Cluster Details**: In-depth information about selected clusters
+- **Conversation Dialog**: Examine individual conversations
+- **Metadata Filtering**: Filter clusters based on extracted properties
 
 ## Next Steps
 

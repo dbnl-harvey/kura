@@ -344,7 +344,7 @@ To quickly test Kura and see it in action:
 1. **Run the tutorial test** to generate sample data:
 
 ```bash
-uv run python tutorial_test/test_tutorial.py
+uv run python scripts/tutorial_procedural_api.py
 ```
 
 Expected output:
