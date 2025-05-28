@@ -87,6 +87,7 @@ class HDBUMAP(BaseDimensionalityReduction):
         res = []
         for i, cluster in enumerate(clusters):
             projected = ProjectedCluster(
+                slug=cluster.slug,
                 id=cluster.id,
                 name=cluster.name,
                 description=cluster.description,
