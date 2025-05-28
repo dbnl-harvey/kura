@@ -52,28 +52,57 @@ uv pip install kura
 
 ```python
 from kura import Kura
-from kura.embedding import OpenAIEmbeddingModel
-from kura.summarisation import SummaryModel
-from kura.dimensionality import DimensionalityReduction
-from asyncio import run
+from kura.types import Conversation
+import asyncio
 
 # Initialize Kura with default components
 kura = Kura(
-    embedding_model=OpenAIEmbeddingModel(),
-    summarisation_model=SummaryModel(),
-    dimensionality_reduction=DimensionalityReduction(),
-    checkpoint_dir="./checkpoints",
+    checkpoint_dir="./tutorial_checkpoints"
 )
 
-# Load conversations and run the clustering pipeline
-kura.load_conversations("conversations.json")
-run(kura.cluster_conversations())
+# Load sample conversations from Hugging Face
+# This loads 190 synthetic programming conversations
+conversations = Conversation.from_hf_dataset(
+    "ivanleomk/synthetic-gemini-conversations",
+    split="train"
+)
+# Expected output: "Loaded 190 conversations successfully!"
+
+# Run the clustering pipeline
+# This will:
+# 1. Generate conversation summaries
+# 2. Create base clusters from summaries
+# 3. Reduce clusters hierarchically
+# 4. Project clusters to 2D for visualization
+asyncio.run(kura.cluster_conversations(conversations))
+# Expected output:
+# "Generated 190 summaries"
+# "Generated 19 base clusters"
+# "Reduced to 29 meta clusters"
+# "Generated 29 projected clusters"
 
 # Visualize the results in the terminal
 kura.visualise_clusters()
+# This displays a hierarchical tree view of your clusters
+# Expected output:
+# Clusters (190 conversations)
+# ╠══ Create engaging, SEO-optimized content for online platforms (40 conversations)
+# ║   ╠══ Create SEO-focused marketing content for products (8 conversations)
+# ║   ╠══ Create engaging YouTube video scripts for tutorials (20 conversations)
+# ║   ╚══ Assist in writing engaging SEO-friendly blog posts (12 conversations)
+# ╠══ Help me visualize and analyze data across platforms (30 conversations)
+# ║   ╠══ Assist with R data analysis and visualization issues (9 conversations)
+# ║   ╠══ Assist with data analysis and visualization in Python (12 conversations)
+# ║   ╚══ Help me visualize sales data in Tableau (9 conversations)
+# ╠══ Troubleshoot and implement authentication in web APIs (22 conversations)
+# ║   ╠══ Guide on implementing JWT authentication in Spring Boot (10 conversations)
+# ║   ╠══ Troubleshoot API authentication issues in a Flutter app (2 conversations)
+# ║   ╚══ Assist in troubleshooting Django REST API issues (10 conversations)
+# ... (and more clusters)
 
 # Or start the web interface
-# In your terminal: kura start-app
+# In your terminal: kura start-app --dir ./tutorial_checkpoints
+# Access at http://localhost:8000
 ```
 
 ## Loading Data
@@ -92,12 +121,12 @@ conversations = Conversation.from_claude_conversation_dump("conversations.json")
 ```python
 from kura.types import Conversation
 conversations = Conversation.from_hf_dataset(
-    "ivanleomk/synthetic-gemini-conversations", 
+    "ivanleomk/synthetic-gemini-conversations",
     split="train"
 )
 ```
 
-> 💡 **Note:** This example uses a dataset of ~190 synthetic programming conversations that's structured for Kura. It contains technical discussions about web development frameworks, coding patterns, and software engineering that form natural clusters.
+> 💡 **Note:** This example uses a dataset of ~190 synthetic programming conversations that's structured for Kura. It contains technical discussions about web development frameworks, coding patterns, and software engineering that form natural clusters. The example loads and processes these conversations to create 29 hierarchical clusters across 10 root categories.
 
 ### Custom Conversations
 
@@ -105,6 +134,12 @@ conversations = Conversation.from_hf_dataset(
 from kura.types import Conversation, Message
 from datetime import datetime
 from uuid import uuid4
+
+# Example raw messages from your data source
+raw_messages = [
+    {"role": "user", "content": "How do I implement authentication?"},
+    {"role": "assistant", "content": "Here's how to implement authentication..."}
+]
 
 conversations = [
     Conversation(
@@ -120,6 +155,11 @@ conversations = [
         created_at=datetime.now(),
     )
 ]
+
+# Process the conversations
+import asyncio
+kura = Kura()
+asyncio.run(kura.cluster_conversations(conversations))
 ```
 
 ## Architecture
@@ -189,7 +229,7 @@ async def language_extractor(
 ) -> ExtractedProperty:
     sem = sems.get("default")
     client = clients.get("default")
-    
+
     async with sem:
         resp = await client.chat.completions.create(
             model="gemini-2.0-flash",
@@ -302,19 +342,89 @@ Kura is actively evolving with plans to add:
 To quickly test Kura and see it in action:
 
 1. **Run the tutorial test** to generate sample data:
+
 ```bash
-python tutorial_test/test_tutorial.py
+uv run python tutorial_test/test_tutorial.py
 ```
+
+Expected output:
+```text
+Loaded 190 conversations successfully!
+
+============================================================
+                  Conversation Processing
+============================================================
+
+Starting conversation clustering...
+Step 1: Generating conversation summaries...
+Generated 190 summaries
+Step 2: Generating base clusters from summaries...
+Generated 19 base clusters
+Step 3: Reducing clusters hierarchically...
+Reduced to 29 meta clusters
+Step 4: Projecting clusters to 2D for visualization...
+Generated 29 projected clusters
+
+Pipeline complete! Generated 29 projected clusters!
+
+Processing Summary:
+  • Input conversations: 190
+  • Final reduced clusters: 29
+  • Final projected clusters: 29
+  • Checkpoints saved to: ./tutorial_checkpoints
+
+================================================================================
+VISUALIZATION DEMONSTRATION
+================================================================================
+
+Clusters (190 conversations)
+╠══ Create engaging, SEO-optimized content for online platforms (40 conversations)
+║   ╠══ Create SEO-focused marketing content for products (8 conversations)
+║   ╠══ Create engaging YouTube video scripts for tutorials (20 conversations)
+║   ╚══ Assist in writing engaging SEO-friendly blog posts (12 conversations)
+╠══ Help me visualize and analyze data across platforms (30 conversations)
+║   ╠══ Assist with R data analysis and visualization issues (9 conversations)
+║   ╠══ Assist with data analysis and visualization in Python (12 conversations)
+║   ╚══ Help me visualize sales data in Tableau (9 conversations)
+╠══ Troubleshoot and implement authentication in web APIs (22 conversations)
+║   ╠══ Guide on implementing JWT authentication in Spring Boot (10 conversations)
+║   ╠══ Troubleshoot API authentication issues in a Flutter app (2 conversations)
+║   ╚══ Assist in troubleshooting Django REST API issues (10 conversations)
+╠══ Improve performance of ETL and real-time data pipelines (21 conversations)
+║   ╠══ Optimize ETL pipelines for performance and quality (9 conversations)
+║   ╚══ Optimize real-time data pipelines using Spark and Kafka (12 conversations)
+╠══ Guide me in structuring API documentation (19 conversations)
+║   ╚══ Provide guidance on structuring API documentation (19 conversations)
+╠══ Improve and troubleshoot UI/UX for web and mobile (18 conversations)
+║   ╠══ Troubleshoot and optimize React TypeScript components (10 conversations)
+║   ╚══ Optimize UI/UX for Flutter mobile apps (8 conversations)
+╠══ Assist in automating CI/CD pipeline troubleshooting (10 conversations)
+║   ╚══ Troubleshoot and automate CI/CD pipeline integration (10 conversations)
+╠══ Guide in crafting detailed case studies and white papers (10 conversations)
+║   ╠══ Help structure a client case study narrative (1 conversations)
+║   ╚══ Assist in structuring technical white papers (9 conversations)
+╠══ Help craft compelling healthcare blog content (10 conversations)
+║   ╚══ Help write engaging healthcare blog posts (10 conversations)
+╚══ Help enhance financial modeling skills in Excel (10 conversations)
+    ╚══ Assist with financial modeling and data analysis in Excel (10 conversations)
+```
+
+This will:
+- Load 190 sample conversations from Hugging Face
+- Process them through the complete pipeline
+- Generate 29 hierarchical clusters organized into 10 root categories
+- Save checkpoints to `./tutorial_checkpoints`
+- Display various visualization styles
 
 2. **Test the UI** with the generated data:
+
 ```bash
-cd kura/explorer/
-./run-local.sh
+kura start-app --dir ./tutorial_checkpoints
 ```
 
-The UI will be available at:
-- Frontend: http://localhost:5173
-- API docs: http://localhost:8001/docs
+The web interface will be available at:
+- Frontend: http://localhost:8000
+- API docs: http://localhost:8000/docs
 
 Note: The UI may take a moment to fully load as it processes the cluster data.
 
