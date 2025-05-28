@@ -1,8 +1,14 @@
 site_name: Kura
 site_url: https://usekura.xyz
+site_author: Ivan Leo # Replace with your actual name or organization name
 site_description: A tool for analysing and visualising chat data
 
 extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/567-labs/kura # Replace with your GitHub repo link
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/ivanleomk # Replace with your Twitter handle
   analytics:
     provider: google
     property: G-5ZYBS2C5VF
@@ -17,6 +23,14 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.expand
+    - content.social.cards # Enables social cards
+  palette:
+    primary: indigo
+    accent: indigo
+  favicon: assets/favicon.png # Example path, replace with your actual favicon path
+  logo: assets/logo.svg # Example path, replace with your actual logo path
+
+copyright: Copyright &copy; 2025 Ivan Leo # Replace with your actual name or organization name
 
 nav:
   - Home: index.md
@@ -24,6 +38,7 @@ nav:
     - Installation: getting-started/installation.md
     - Quickstart: getting-started/quickstart.md
     - Configuration: getting-started/configuration.md
+    - Procedural API Tutorial: getting-started/tutorial-procedural-api.md
   - Core Concepts:
     - Overview: core-concepts/overview.md
     - Conversations: core-concepts/conversations.md
@@ -32,18 +47,8 @@ nav:
     - Clustering: core-concepts/clustering.md
     - Meta-Clustering: core-concepts/meta-clustering.md
     - Dimensionality Reduction: core-concepts/dimensionality-reduction.md
-  - User Guide:
-    - Loading Data: guides/loading-data.md
-    - Visualizing Results: guides/visualization.md
-    - Working with Metadata: guides/metadata.md
-    - Customizing Models: guides/custom-models.md
-    - Using the CLI: guides/cli.md
-  - Tutorials:
-    - Basic Usage: tutorials/basic-usage.md
-    - Advanced Usage: tutorials/advanced-usage.md
-    - Custom Extractors: tutorials/custom-extractors.md
   - API Reference: api/index.md
-  - Blog: 
+  - Blog:
     - blog/index.md
 
 plugins:
@@ -68,6 +73,8 @@ plugins:
             show_if_no_docstring: true
             show_signature_annotations: true
             members_order: source
+  - material-extensions # Adds Material for MkDocs extensions
+  - git-revision-date-localized # Adds Git revision date plugin
 
 markdown_extensions:
   - pymdownx.highlight:
