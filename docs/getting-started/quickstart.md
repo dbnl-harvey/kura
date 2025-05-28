@@ -134,5 +134,5 @@ Now that you've run your first analysis with Kura, you can:
 
 - [Learn about configuration options](configuration.md) to customize Kura
 - Explore [core concepts](../core-concepts/overview.md) to understand how Kura works
-- Read about [loading different data formats](../guides/loading-data.md)
-- Check out the [tutorials](../tutorials/basic-usage.md) for more detailed examples
+- Try the [Procedural API Tutorial](tutorial-procedural-api.md) for a more flexible approach
+- Check out the [API Reference](../api/index.md) for detailed documentation

@@ -237,6 +237,6 @@ if __name__ == "__main__":
 
 ## Next Steps
 
-- Explore [custom models](../guides/custom-models.md) for each pipeline stage
-- Learn about [loading different data sources](../guides/loading-data.md)
+- Explore the [API Reference](../api/index.md) for detailed documentation
+- Learn about [core concepts](../core-concepts/overview.md)
 - Try the [class-based API](./quickstart.md) for a simpler interface

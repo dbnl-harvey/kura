@@ -74,12 +74,12 @@ class Kura:
             cluster_model: Model for initial clustering (default: ClusterModel)
             meta_cluster_model: Model for hierarchical clustering (default: MetaClusterModel)
             dimensionality_reduction: Model for 2D projection (default: HDBUMAP)
-            max_clusters: Deprecated. Use meta_cluster_model with configured max_clusters instead
             checkpoint_dir: Directory for saving intermediate results (default: "./checkpoints")
             conversation_checkpoint_name: Filename for conversations checkpoint (default: "conversations.json")
             disable_checkpoints: Whether to disable checkpoint loading/saving (default: False)
             console: Optional Rich console instance to use for output (default: None, will create if Rich is available)
             disable_progress: Whether to disable all progress bars for cleaner output (default: False)
+            **kwargs: Additional keyword arguments passed to model constructors
 
         Note:
             Checkpoint filenames for individual processing steps (summaries, clusters, meta-clusters,

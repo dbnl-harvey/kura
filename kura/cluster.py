@@ -47,15 +47,16 @@ class ClusterModel(BaseClusterModel):
         cluster_id: int,
         cluster_id_to_summaries: dict[int, list[ConversationSummary]],
         limit: int = 10,
-    ):
-        """Get contrastive examples from other clusters to help distinguish this cluster
+    ) -> list[ConversationSummary]:
+        """Get contrastive examples from other clusters to help distinguish this cluster.
+
         Args:
             cluster_id (int): The id of the cluster to get contrastive examples for
             cluster_id_to_summaries (dict[int, list[ConversationSummary]]): A dictionary of cluster ids to their summaries
             limit (int, optional): The number of contrastive examples to return. Defaults to 10.
 
         Returns:
-            list[ConversationSummary]: A list of contrastive examples
+            list[ConversationSummary]: A list of contrastive examples from other clusters
         """
         other_clusters = [c for c in cluster_id_to_summaries.keys() if c != cluster_id]
         all_examples = []

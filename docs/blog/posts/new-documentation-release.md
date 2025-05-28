@@ -14,9 +14,9 @@ We're excited to announce a comprehensive overhaul of the Kura documentation! Th
 
 Our documentation has been completely reorganized and expanded to provide a better experience:
 
-- **Clear Structure**: New organization with dedicated sections for Getting Started, Core Concepts, User Guides, and Tutorials
+- **Clear Structure**: New organization with dedicated sections for Getting Started, Core Concepts, and API Reference
 - **Comprehensive Installation Guide**: Detailed instructions for different installation methods, including both `uv` and `pip`
-- **In-depth Tutorials**: Step-by-step guides for common use cases
+- **In-depth Tutorials**: Step-by-step guides in our Getting Started section
 - **Enriched API Reference**: Better organized and more detailed API documentation
 - **Core Concepts Explained**: Detailed explanations of Kura's architecture and components
 - **Improved Code Examples**: Concise, practical examples throughout
@@ -28,8 +28,7 @@ If you're new to Kura, we recommend starting with:
 1. [Installation Guide](../../getting-started/installation.md)
 2. [Quickstart Guide](../../getting-started/quickstart.md)
 3. [Core Concepts Overview](../../core-concepts/overview.md)
-
-For those already familiar with Kura, check out the [User Guides](../../guides/loading-data.md) to learn about specific features and use cases.
+4. [Procedural API Tutorial](../../getting-started/tutorial-procedural-api.md)
 
 ## We Want Your Feedback!
 

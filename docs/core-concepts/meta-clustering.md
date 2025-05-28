@@ -93,4 +93,4 @@ Meta-clustering typically follows the initial clustering step performed by `Clus
 
 - [Clustering](clustering.md)
 - [API documentation](../api/index.md)
-- [kura/meta_cluster.py](../../kura/meta_cluster.py)
+- [Source Code](https://github.com/567-labs/kura/blob/main/kura/meta_cluster.py)

@@ -152,4 +152,4 @@ Clustering is the third major step in Kura's analysis pipeline:
 - [Summarization](summarization.md)
 - [Embedding](embedding.md)
 - [API documentation](../api/index.md)
-- [kura/cluster.py](../../kura/cluster.py)
+- [Source Code](https://github.com/567-labs/kura/blob/main/kura/cluster.py)

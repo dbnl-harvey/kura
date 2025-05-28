@@ -134,6 +134,5 @@ from kura.v1 import summarise_conversations
 Now that you understand how to configure Kura using the procedural API, you can:
 
 - [Learn about core concepts](../core-concepts/overview.md)
-- [Explore how to customize models](../guides/custom-models.md)
-- [See how to work with metadata](../guides/metadata.md)
-- [Try the procedural API examples](../tutorials/basic-usage.md#procedural-api-example)
+- [Try the Procedural API Tutorial](../getting-started/tutorial-procedural-api.md)
+- [Check out the API Reference](../api/index.md)

@@ -86,7 +86,7 @@ You can create custom loaders for other data sources by implementing functions t
 def load_from_custom_format(file_path):
     # Load and parse your custom data format
     data = your_parsing_function(file_path)
-    
+
     # Convert to Conversation objects
     conversations = []
     for entry in data:
@@ -98,16 +98,16 @@ def load_from_custom_format(file_path):
             )
             for msg in entry["messages"]
         ]
-        
+
         conversation = Conversation(
             id=entry["id"],
             created_at=entry["date"],
             messages=messages,
             metadata=entry.get("meta", {})
         )
-        
+
         conversations.append(conversation)
-    
+
     return conversations
 ```
 
@@ -157,5 +157,5 @@ This metadata can later be used to:
 Now that you understand how conversations are structured in Kura, you can:
 
 - Learn about the [summarization process](summarization.md)
-- See how to [load different data formats](../guides/loading-data.md)
-- Explore how to [work with metadata](../guides/metadata.md)
+- See how to load different data formats in the [Quickstart Guide](../getting-started/quickstart.md)
+- Explore configuration options in the [Configuration Guide](../getting-started/configuration.md)
