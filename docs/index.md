@@ -110,31 +110,13 @@ async def process_conversations():
 results = asyncio.run(process_conversations())
 ```
 
-## Key Design Principles
-
-### Function-Based Architecture
-The procedural API follows the principle of **functions orchestrate, models execute**:
-- Each pipeline step is a pure function with explicit inputs/outputs
-- No hidden state or side effects
-- Works with any model implementing the required interface
-
-### Polymorphism Through Interfaces
-All functions work with heterogeneous models:
-- `BaseSummaryModel` - OpenAI, vLLM, Hugging Face, local models
-- `BaseClusterModel` - HDBSCAN, KMeans, custom algorithms
-- `BaseMetaClusterModel` - Different hierarchical strategies
-- `BaseDimensionalityReduction` - UMAP, t-SNE, PCA
-
-### Keyword-Only Arguments
-All functions use keyword-only arguments for clarity and maintainability.
-
 ## Documentation
 
-- **Getting Started**
+### Getting Started
   - [Installation Guide](getting-started/installation.md)
   - [Tutorial: Procedural API](getting-started/tutorial-procedural-api.md)
 
-- **Core Concepts**
+### Core Concepts
   - [Conversations](core-concepts/conversations.md)
   - [Embedding](core-concepts/embedding.md)
   - [Clustering](core-concepts/clustering.md)
@@ -142,7 +124,7 @@ All functions use keyword-only arguments for clarity and maintainability.
   - [Meta-Clustering](core-concepts/meta-clustering.md)
   - [Dimensionality Reduction](core-concepts/dimensionality-reduction.md)
 
-- **API Reference**
+### API Reference
   - [Procedural API Documentation](api/index.md)
 
 ## About
