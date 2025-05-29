@@ -1,8 +1,8 @@
-# Kura: Chat Data Analysis and Visualization
+# Kura: Procedural API for Chat Data Analysis
 
 ![Kura Architecture](assets/images/kura-architecture.png)
 
-Kura is an open-source tool for understanding and visualizing chat data, inspired by [Anthropic's CLIO](https://www.anthropic.com/research/clio). It helps you discover patterns, trends, and insights from user conversations by applying machine learning techniques to cluster similar interactions.
+Kura is an open-source library for understanding chat data through machine learning, inspired by [Anthropic's CLIO](https://www.anthropic.com/research/clio). It provides a functional, composable API for clustering conversations to discover patterns and insights.
 
 ## Why Analyze Conversation Data?
 
@@ -20,12 +20,10 @@ Kura addresses this challenge by:
 
 - **Conversation Summarization**: Automatically generate concise task descriptions from conversations
 - **Hierarchical Clustering**: Group similar conversations at multiple levels of granularity
-- **Interactive Visualization**: Explore clusters through map, tree, and detail views
 - **Metadata Extraction**: Extract valuable context from conversations using LLMs
 - **Custom Models**: Use your preferred embedding, summarization, and clustering methods
-- **Web Interface**: Intuitive UI for exploring and analyzing conversation clusters
-- **CLI Tools**: Command-line interface for scripting and automation
 - **Checkpoint System**: Save and resume analysis sessions
+- **Procedural API**: Functional approach with composable functions for maximum flexibility
 
 ## Installation
 
@@ -40,44 +38,96 @@ uv pip install kura
 ## Quick Start
 
 ```python
-from kura import Kura
+from kura.v1 import (
+    summarise_conversations,
+    generate_base_clusters_from_conversation_summaries,
+    reduce_clusters_from_base_clusters,
+    reduce_dimensionality_from_clusters,
+    CheckpointManager
+)
 from kura.types import Conversation
+from kura.summarisation import SummaryModel
+from kura.cluster import ClusterModel
+from kura.meta_cluster import MetaClusterModel
+from kura.dimensionality import HDBUMAP
 import asyncio
 
-# Initialize Kura with default components
-kura = Kura(
-    checkpoint_dir="./tutorial_checkpoints"
-)
-
-# Load sample conversations from Hugging Face
+# Load conversations
 conversations = Conversation.from_hf_dataset(
     "ivanleomk/synthetic-gemini-conversations",
     split="train"
 )
 
-# Run the clustering pipeline
-asyncio.run(kura.cluster_conversations(conversations))
+# Set up models
+summary_model = SummaryModel()
+cluster_model = ClusterModel()
+meta_cluster_model = MetaClusterModel(max_clusters=10)
+dimensionality_model = HDBUMAP()
 
-# Visualize the results in the terminal
-kura.visualise_clusters()
+# Set up checkpoint manager
+checkpoint_mgr = CheckpointManager("./checkpoints", enabled=True)
 
-# Or start the web interface
-# In your terminal: kura start-app --dir ./tutorial_checkpoints
-# Access at http://localhost:8000
+# Run pipeline with explicit steps
+async def process_conversations():
+    # Step 1: Generate summaries
+    summaries = await summarise_conversations(
+        conversations,
+        model=summary_model,
+        checkpoint_manager=checkpoint_mgr
+    )
+
+    # Step 2: Create base clusters
+    clusters = await generate_base_clusters_from_conversation_summaries(
+        summaries,
+        model=cluster_model,
+        checkpoint_manager=checkpoint_mgr
+    )
+
+    # Step 3: Build hierarchy
+    meta_clusters = await reduce_clusters_from_base_clusters(
+        clusters,
+        model=meta_cluster_model,
+        checkpoint_manager=checkpoint_mgr
+    )
+
+    # Step 4: Project to 2D
+    projected = await reduce_dimensionality_from_clusters(
+        meta_clusters,
+        model=dimensionality_model,
+        checkpoint_manager=checkpoint_mgr
+    )
+
+    return projected
+
+# Execute the pipeline
+results = asyncio.run(process_conversations())
 ```
+
+## Key Design Principles
+
+### Function-Based Architecture
+The procedural API follows the principle of **functions orchestrate, models execute**:
+- Each pipeline step is a pure function with explicit inputs/outputs
+- No hidden state or side effects
+- Works with any model implementing the required interface
+
+### Polymorphism Through Interfaces
+All functions work with heterogeneous models:
+- `BaseSummaryModel` - OpenAI, vLLM, Hugging Face, local models
+- `BaseClusterModel` - HDBSCAN, KMeans, custom algorithms
+- `BaseMetaClusterModel` - Different hierarchical strategies
+- `BaseDimensionalityReduction` - UMAP, t-SNE, PCA
+
+### Keyword-Only Arguments
+All functions use keyword-only arguments for clarity and maintainability.
 
 ## Documentation
 
-Explore the full documentation:
-
 - **Getting Started**
   - [Installation Guide](getting-started/installation.md)
-  - [Quickstart Guide](getting-started/quickstart.md)
-  - [Configuration](getting-started/configuration.md)
   - [Tutorial: Procedural API](getting-started/tutorial-procedural-api.md)
 
 - **Core Concepts**
-  - [Overview](core-concepts/overview.md)
   - [Conversations](core-concepts/conversations.md)
   - [Embedding](core-concepts/embedding.md)
   - [Clustering](core-concepts/clustering.md)
@@ -86,10 +136,7 @@ Explore the full documentation:
   - [Dimensionality Reduction](core-concepts/dimensionality-reduction.md)
 
 - **API Reference**
-  - [API Documentation](api/index.md)
-
-- **Advanced Topics**
-  - [Issue Tracker Integration](itracker.md)
+  - [Procedural API Documentation](api/index.md)
 
 ## About
 
