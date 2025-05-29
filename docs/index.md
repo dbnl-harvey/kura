@@ -1,61 +1,96 @@
-# Kura Documentation
+# Kura: Chat Data Analysis and Visualization
 
-## What is Kura?
-
-> Kura is kindly sponsored by [Improving RAG](http://improvingrag.com). If you're wondering what goes on behind the scenes of any production RAG application, ImprovingRAG gives you a clear roadmap as to how to achieve it.
+![Kura Architecture](assets/images/kura-architecture.png)
 
 Kura is an open-source tool for understanding and visualizing chat data, inspired by [Anthropic's CLIO](https://www.anthropic.com/research/clio). It helps you discover patterns, trends, and insights from user conversations by applying machine learning techniques to cluster similar interactions.
 
-By iteratively summarizing and clustering conversations, Kura transforms raw chat data into actionable insights. It uses language models like Gemini to understand conversation content and organize them into meaningful hierarchical groups, helping you focus on the specific features to prioritize or issues to fix.
+## Why Analyze Conversation Data?
 
-I've written a [walkthrough of the code](https://ivanleo.com/blog/understanding-user-conversations) if you're interested in understanding the high level ideas.
+As AI assistants and chatbots become increasingly central to product experiences, understanding how users interact with these systems at scale becomes a critical challenge. Manually reviewing thousands of conversations is impractical, yet crucial patterns and user needs often remain hidden in this data.
+
+Kura addresses this challenge by:
+
+- **Revealing user intent patterns** that may not be obvious from individual conversations
+- **Identifying common user needs** to prioritize feature development
+- **Discovering edge cases and failures** that require attention
+- **Tracking usage trends** over time as your product evolves
+- **Informing prompt engineering** by highlighting successful and problematic interactions
+
+## Features
+
+- **Conversation Summarization**: Automatically generate concise task descriptions from conversations
+- **Hierarchical Clustering**: Group similar conversations at multiple levels of granularity
+- **Interactive Visualization**: Explore clusters through map, tree, and detail views
+- **Metadata Extraction**: Extract valuable context from conversations using LLMs
+- **Custom Models**: Use your preferred embedding, summarization, and clustering methods
+- **Web Interface**: Intuitive UI for exploring and analyzing conversation clusters
+- **CLI Tools**: Command-line interface for scripting and automation
+- **Checkpoint System**: Save and resume analysis sessions
+
+## Installation
+
+```bash
+# Install from PyPI
+pip install kura
+
+# Or use uv for faster installation
+uv pip install kura
+```
 
 ## Quick Start
-
-> Kura requires python 3.9 because of our dependency on UMAP.
 
 ```python
 from kura import Kura
 from kura.types import Conversation
 import asyncio
 
-# Initialize Kura with checkpoint directory
+# Initialize Kura with default components
 kura = Kura(
     checkpoint_dir="./tutorial_checkpoints"
 )
 
-# Load sample data (190 synthetic programming conversations)
+# Load sample conversations from Hugging Face
 conversations = Conversation.from_hf_dataset(
     "ivanleomk/synthetic-gemini-conversations",
     split="train"
 )
-print(f"Loaded {len(conversations)} conversations successfully!")
 
-# Process conversations through the clustering pipeline
+# Run the clustering pipeline
 asyncio.run(kura.cluster_conversations(conversations))
-# Expected output:
-# Generated 190 summaries
-# Generated 19 base clusters
-# Reduced to 29 meta clusters
-# Generated 29 projected clusters
 
-# Visualize the results
+# Visualize the results in the terminal
 kura.visualise_clusters()
-# Expected output: Hierarchical tree showing 10 root clusters
-# with topics like:
-# - Create engaging, SEO-optimized content for online platforms (40 conversations)
-# - Help me visualize and analyze data across platforms (30 conversations)
-# - Troubleshoot and implement authentication in web APIs (22 conversations)
-# ... and more
+
+# Or start the web interface
+# In your terminal: kura start-app --dir ./tutorial_checkpoints
+# Access at http://localhost:8000
 ```
 
-To explore more features, check out:
-- [Installation Guide](getting-started/installation.md)
-- [Quickstart Guide](getting-started/quickstart.md)
-- [Core Concepts](core-concepts/overview.md)
+## Documentation
 
-## Technical Walkthrough
+Explore the full documentation:
 
-I've also recorded a technical deep dive into what Kura is and the ideas behind it if you'd rather watch than read.
+- **Getting Started**
+  - [Installation Guide](getting-started/installation.md)
+  - [Quickstart Guide](getting-started/quickstart.md)
+  - [Configuration](getting-started/configuration.md)
+  - [Tutorial: Procedural API](getting-started/tutorial-procedural-api.md)
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/TPOP_jDiSVE?si=uvTond4LUwJGOn4F" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+- **Core Concepts**
+  - [Overview](core-concepts/overview.md)
+  - [Conversations](core-concepts/conversations.md)
+  - [Embedding](core-concepts/embedding.md)
+  - [Clustering](core-concepts/clustering.md)
+  - [Summarization](core-concepts/summarization.md)
+  - [Meta-Clustering](core-concepts/meta-clustering.md)
+  - [Dimensionality Reduction](core-concepts/dimensionality-reduction.md)
+
+- **API Reference**
+  - [API Documentation](api/index.md)
+
+- **Advanced Topics**
+  - [Issue Tracker Integration](itracker.md)
+
+## About
+
+Kura is under active development. If you face any issues or have suggestions, please feel free to [open an issue](https://github.com/567-labs/kura/issues) or a PR. For more details on the technical implementation, check out this [walkthrough of the code](https://ivanleo.com/blog/understanding-user-conversations).
