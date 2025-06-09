@@ -43,7 +43,7 @@ from kura import (
     reduce_dimensionality_from_clusters,
     CheckpointManager,
 )
-from kura.visualization import visualise_pipeline_results
+from kura.v1.visualization import visualise_pipeline_results
 from kura.types import Conversation
 from kura.summarisation import SummaryModel
 from kura.cluster import ClusterModel
