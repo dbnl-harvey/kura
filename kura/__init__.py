@@ -10,6 +10,7 @@ from .meta_cluster import MetaClusterModel
 from .summarisation import SummaryModel
 from .types import Conversation
 from .k_means import KmeansClusteringMethod, MiniBatchKmeansClusteringMethod
+from .hdbscan import HDBSCANClusteringMethod
 
 __all__ = [
     "ClusterModel",
@@ -18,6 +19,7 @@ __all__ = [
     "Conversation",
     "KmeansClusteringMethod",
     "MiniBatchKmeansClusteringMethod",
+    "HDBSCANClusteringMethod",
     "summarise_conversations",
     "generate_base_clusters_from_conversation_summaries",
     "reduce_clusters_from_base_clusters",

@@ -127,7 +127,7 @@ print("Starting conversation clustering with MiniBatch KMeans...")
 
 
 async def process_with_progress():
-    """Process conversations step by step using the procedural API."""
+    """Process conversations step by step using the procedural API with MiniBatch KMeans clustering."""
     print("Step 1: Generating conversation summaries...")
     with timer("Conversation summarization"):
         summaries = await summarise_conversations(
@@ -207,3 +207,40 @@ with timer("Direct checkpoint visualization"):
 print("=" * 80)
 print("✨ TUTORIAL COMPLETE!")
 print("=" * 80)
+
+print("Procedural API Benefits Demonstrated:")
+print("  ✅ Step-by-step processing with individual control")
+print("  ✅ Flexible checkpoint management")
+print("  • Clear separation of concerns")
+print("  • Easy to customize individual steps")
+print("  • Multiple visualization options")
+print()
+
+print("MiniBatch KMeans Clustering Features Demonstrated:")
+print("  • Memory-efficient clustering for large datasets")
+print("  • Faster processing with mini-batch approach")
+print("  • Configurable batch size and convergence parameters")
+print("  • Reproducible results with random seed control")
+print("  • Scalable to handle 100k+ conversations")
+print()
+
+print("Visualization Features Demonstrated:")
+print("  • Basic hierarchical tree view")
+print("  • Enhanced view with statistics and progress bars")
+print("  • Rich-formatted output with colors and tables")
+print("  • Direct checkpoint integration")
+print("  • Pipeline result visualization")
+print()
+
+print("CheckpointManager Integration:")
+print("  • Automatic checkpoint loading and saving")
+print("  • Seamless integration with visualization functions")
+print("  • Resume processing from any checkpoint")
+print("  • Visualize results without re-running pipeline")
+print()
+
+print(f"Check '{checkpoint_manager.checkpoint_dir}' for saved intermediate results!")
+print(
+    "Try different MiniBatch KMeans parameters by modifying the MiniBatchKmeansClusteringMethod initialization!"
+)
+print("Customize visualization by passing different clusters or checkpoint paths!")

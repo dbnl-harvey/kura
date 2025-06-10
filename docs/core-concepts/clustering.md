@@ -117,7 +117,7 @@ Kura supports multiple clustering algorithms through the `BaseClusteringMethod` 
 The default clustering method uses scikit-learn's standard K-means algorithm. This approach loads all embeddings into memory and computes centroids using the full dataset.
 
 **Best for:**
-- Small to medium datasets (< 50k conversations)  
+- Small to medium datasets (< 50k conversations)
 - When clustering accuracy is critical
 - Reproducible results (deterministic with fixed random seed)
 - Development and testing scenarios
@@ -143,7 +143,7 @@ Optimized for large datasets, MiniBatch K-means processes data in small batches 
 
 **Best for:**
 - Large datasets (100k+ conversations)
-- Memory-constrained environments  
+- Memory-constrained environments
 - Production deployments with limited resources
 - When clustering speed is more important than perfect accuracy
 
@@ -156,7 +156,7 @@ Optimized for large datasets, MiniBatch K-means processes data in small batches 
 **Configuration parameters:**
 - `clusters_per_group`: Target items per cluster (default: 10)
 - `batch_size`: Mini-batch size for processing (default: 1000)
-- `max_iter`: Maximum iterations (default: 100) 
+- `max_iter`: Maximum iterations (default: 100)
 - `random_state`: Random seed for reproducibility (default: 42)
 
 **Example usage:**
@@ -174,16 +174,64 @@ model = ClusterModel(
 )
 ```
 
+### HDBSCAN (`HDBSCANClusteringMethod`)
+
+HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise) often provides superior results for conversation clustering tasks, especially when you don't know the optimal number of clusters in advance.
+
+**Best for:**
+- Exploratory analysis when you don't know how many topics exist
+- Datasets with varying cluster densities (common and rare topics)
+- Automatic noise and outlier detection
+- When you need hierarchical cluster relationships
+- Large datasets with high-dimensional embeddings
+
+**Characteristics:**
+- **Memory usage:** Moderate - more efficient than standard K-means
+- **Speed:** Fast - good scalability for large datasets
+- **Accuracy:** High - discovers natural cluster boundaries
+- **Deterministic:** Yes - consistent results with same parameters
+
+**Key advantages:**
+- **Natural cluster discovery:** Automatically finds optimal number of clusters
+- **Handles varying densities:** Can find clusters of different shapes and sizes
+- **Noise detection:** Identifies outlier conversations that don't fit clear patterns
+- **Hierarchical structure:** Creates tree of clusters showing topic relationships
+
+**Configuration parameters:**
+- `min_cluster_size`: Minimum conversations per cluster (default: 5)
+- `min_samples`: Minimum samples for core points (default: 3)
+- `cluster_selection_epsilon`: Distance threshold for merging (default: 0.0)
+- `cluster_selection_method`: "eom" (Excess of Mass) or "leaf" (default: "eom")
+- `metric`: Distance measure for embeddings (default: "euclidean")
+
+**Example usage:**
+```python
+from kura import ClusterModel, HDBSCANClusteringMethod
+
+# For exploratory analysis with automatic cluster discovery
+model = ClusterModel(
+    clustering_method=HDBSCANClusteringMethod(
+        min_cluster_size=10,              # Minimum conversations per cluster
+        min_samples=5,                    # Minimum samples for core points
+        cluster_selection_epsilon=0.0,    # Distance threshold for merging
+        cluster_selection_method="eom",   # Excess of Mass method
+        metric="euclidean"                # Distance metric for embeddings
+    )
+)
+```
+
 ### Algorithm Comparison
 
-| Feature | K-means | MiniBatch K-means |
-|---------|---------|-------------------|
-| **Dataset Size** | < 50k conversations | 100k+ conversations |
-| **Memory Usage** | High (full matrix) | Low (batch-wise) |
-| **Processing Speed** | Moderate | Fast |
-| **Clustering Quality** | High | Good |
-| **Reproducibility** | Deterministic | Stochastic |
-| **Use Case** | Development, accuracy-critical | Production, large-scale |
+| Feature | K-means | MiniBatch K-means | HDBSCAN |
+|---------|---------|-------------------|---------|
+| **Dataset Size** | < 50k conversations | 100k+ conversations | Any size |
+| **Memory Usage** | High (full matrix) | Low (batch-wise) | Moderate |
+| **Processing Speed** | Moderate | Fast | Fast |
+| **Clustering Quality** | High | Good | High |
+| **Reproducibility** | Deterministic | Stochastic | Deterministic |
+| **Cluster Count** | Fixed (calculated) | Fixed (calculated) | Automatic |
+| **Noise Handling** | Forces all into clusters | Forces all into clusters | Identifies outliers |
+| **Use Case** | Development, fixed groups | Production, large-scale | Exploratory, natural discovery |
 
 ### Memory Usage Comparison
 
@@ -191,25 +239,28 @@ For a dataset with 100,000 conversations using OpenAI embeddings (1536 dimension
 
 - **Standard K-means:** ~1.2GB for embedding matrix alone
 - **MiniBatch K-means:** ~12MB peak usage (with batch_size=1000)
+- **HDBSCAN:** ~600MB for embedding matrix and cluster tree
 
-### When to Switch Algorithms
+### When to Use Each Algorithm
 
-**Upgrade to MiniBatch K-means when:**
-- Experiencing out-of-memory errors with standard K-means
-- Processing time becomes prohibitive (> 30 minutes)
-- Working with 50k+ conversations
-- Memory usage exceeds available system RAM
+**Choose K-means when:**
+- You want consistent, equal-sized clusters
+- Dataset is small to medium (< 50k conversations)
+- You need deterministic, reproducible results
+- Working in development/testing environments
 
-**Performance Monitoring:**
-```python
-import logging
-logging.basicConfig(level=logging.INFO)
+**Choose MiniBatch K-means when:**
+- Experiencing memory issues with standard K-means
+- Processing very large datasets (100k+ conversations)
+- Speed is more important than perfect accuracy
+- Working in resource-constrained production environments
 
-# Both algorithms provide detailed logging for monitoring:
-# - Cluster size distributions
-# - Processing times
-# - Memory usage patterns
-```
+**Choose HDBSCAN when:**
+- You don't know how many clusters should exist
+- Topics have naturally varying frequencies
+- You want to identify and separate noise/outliers
+- You need hierarchical relationships between clusters
+- Doing exploratory analysis of conversation patterns
 
 ### Custom Clustering Methods
 
