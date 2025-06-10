@@ -54,9 +54,14 @@ async def main():
     # Initialize models
     console = Console()
     summary_model = SummaryModel(console=console)
-    cluster_model = ClusterModel(console=console)
+    cluster_model = ClusterModel(console=console)  # Uses K-means by default
     meta_cluster_model = MetaClusterModel(console=console)
     dimensionality_model = HDBUMAP()
+
+    # Optional: Use HDBSCAN for better cluster discovery
+    # from kura.hdbscan import HDBSCANClusteringMethod
+    # hdbscan_clustering = HDBSCANClusteringMethod(min_cluster_size=10)
+    # cluster_model = ClusterModel(clustering_method=hdbscan_clustering, console=console)
 
     # Set up checkpointing to save intermediate results
     checkpoint_manager = CheckpointManager("./checkpoints", enabled=True)
@@ -109,6 +114,8 @@ This example will:
 2. Process them through the complete analysis pipeline step by step
 3. Generate hierarchical clusters organized into categories
 4. Display the results with enhanced visualization
+
+> **💡 Tip**: The example above uses K-means clustering (default). For better results with unknown datasets, consider using HDBSCAN clustering which automatically discovers the optimal number of clusters. See the [clustering documentation](../core-concepts/clustering.md#clustering-methods-k-means-vs-hdbscan) for a detailed comparison and when to use each method.
 
 ## Visualization Options & Output
 

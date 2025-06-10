@@ -43,13 +43,28 @@ with timer("Importing kura modules"):
     from kura.meta_cluster import MetaClusterModel
     from kura.dimensionality import HDBUMAP
 
+    # Import new HDBSCAN clustering method
+    from kura.hdbscan import HDBSCANClusteringMethod
+
     from rich.console import Console
 
 
 # Set up individual models
 console = Console()
 summary_model = SummaryModel(console=console)
-cluster_model = ClusterModel(console=console)
+
+# Initialize HDBSCAN clustering method with appropriate parameters
+hdbscan_clustering = HDBSCANClusteringMethod(
+    min_cluster_size=5,  # Minimum cluster size for HDBSCAN
+    min_samples=3,  # Minimum samples for core points
+    cluster_selection_epsilon=0.0,  # Distance threshold for merging clusters
+    cluster_selection_method="eom",  # Excess of Mass method
+    metric="euclidean",  # Use euclidean distance (works well for normalized embeddings)
+)
+
+# Use HDBSCAN clustering method in ClusterModel
+cluster_model = ClusterModel(clustering_method=hdbscan_clustering, console=console)
+
 meta_cluster_model = MetaClusterModel(console=console)
 dimensionality_model = HDBUMAP()
 
@@ -107,13 +122,13 @@ for i, msg in enumerate(sample_conversation.messages[:3]):
 print()
 
 # Processing section
-show_section_header("Conversation Processing")
+show_section_header("Conversation Processing with HDBSCAN")
 
-print("Starting conversation clustering...")
+print("Starting conversation clustering with HDBSCAN...")
 
 
 async def process_with_progress():
-    """Process conversations step by step using the procedural API."""
+    """Process conversations step by step using the procedural API with HDBSCAN clustering."""
     print("Step 1: Generating conversation summaries...")
     with timer("Conversation summarization"):
         summaries = await summarise_conversations(
@@ -121,12 +136,12 @@ async def process_with_progress():
         )
     print(f"Generated {len(summaries)} summaries")
 
-    print("Step 2: Generating base clusters from summaries...")
-    with timer("Base clustering"):
+    print("Step 2: Generating base clusters from summaries using HDBSCAN...")
+    with timer("HDBSCAN clustering"):
         clusters = await generate_base_clusters_from_conversation_summaries(
             summaries, model=cluster_model, checkpoint_manager=checkpoint_manager
         )
-    print(f"Generated {len(clusters)} base clusters")
+    print(f"Generated {len(clusters)} base clusters using HDBSCAN")
 
     print("Step 3: Reducing clusters hierarchically...")
     with timer("Meta clustering"):
@@ -200,6 +215,14 @@ print("  • Easy to customize individual steps")
 print("  • Multiple visualization options")
 print()
 
+print("HDBSCAN Clustering Features Demonstrated:")
+print("  • Density-based clustering for natural groupings")
+print("  • Automatic noise detection and outlier handling")
+print("  • No need to specify number of clusters in advance")
+print("  • Better handling of clusters with varying densities")
+print("  • Hierarchical cluster tree structure")
+print()
+
 print("Visualization Features Demonstrated:")
 print("  • Basic hierarchical tree view")
 print("  • Enhanced view with statistics and progress bars")
@@ -216,5 +239,7 @@ print("  • Visualize results without re-running pipeline")
 print()
 
 print(f"Check '{checkpoint_manager.checkpoint_dir}' for saved intermediate results!")
-print("Try different visualization styles by modifying the 'style' parameter!")
+print(
+    "Try different HDBSCAN parameters by modifying the HDBSCANClusteringMethod initialization!"
+)
 print("Customize visualization by passing different clusters or checkpoint paths!")
