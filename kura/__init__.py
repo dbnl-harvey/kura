@@ -6,9 +6,10 @@ from .v1.kura import (
     CheckpointManager,
 )
 
-# Import ParquetCheckpointManager if available
+# Import ParquetCheckpointManager from checkpoints module if available
 try:
-    from .v1.parquet_checkpoint import ParquetCheckpointManager
+    from .checkpoints import ParquetCheckpointManager
+
     PARQUET_AVAILABLE = True
 except ImportError:
     ParquetCheckpointManager = None

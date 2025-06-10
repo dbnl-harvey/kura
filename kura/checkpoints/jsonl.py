@@ -17,7 +17,7 @@ T = TypeVar("T", bound=BaseModel)
 
 class JSONLCheckpointManager:
     """Handles checkpoint loading and saving using JSONL files.
-    
+
     This is the original checkpoint system that stores each checkpoint as
     a JSONL file where each line is a JSON-serialized Pydantic model.
     """
@@ -64,7 +64,9 @@ class JSONLCheckpointManager:
                 f"Loading checkpoint from {checkpoint_path} for {model_class.__name__}"
             )
             with open(checkpoint_path, "r") as f:
-                return [model_class.model_validate_json(line) for line in f]
+                data = [model_class.model_validate_json(line) for line in f]
+                # Return None if the file exists but is empty (consistent with other managers)
+                return data if data else None
         return None
 
     def save_checkpoint(self, filename: str, data: List[T]) -> None:
@@ -87,24 +89,25 @@ class JSONLCheckpointManager:
         """List all available checkpoint files."""
         if not self.enabled or not os.path.exists(self.checkpoint_dir):
             return []
-        
+
         return [
-            f for f in os.listdir(self.checkpoint_dir) 
-            if f.endswith(('.jsonl', '.json'))
+            f
+            for f in os.listdir(self.checkpoint_dir)
+            if f.endswith((".jsonl", ".json"))
         ]
 
     def delete_checkpoint(self, filename: str) -> bool:
         """Delete a checkpoint file.
-        
+
         Args:
             filename: Name of the checkpoint file to delete
-            
+
         Returns:
             True if file was deleted, False if it didn't exist
         """
         if not self.enabled:
             return False
-            
+
         checkpoint_path = self.get_checkpoint_path(filename)
         if os.path.exists(checkpoint_path):
             os.remove(checkpoint_path)
