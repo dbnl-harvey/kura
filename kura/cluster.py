@@ -1,6 +1,6 @@
 from kura.base_classes import BaseClusterModel, BaseClusteringMethod, BaseEmbeddingModel
 from kura.embedding import OpenAIEmbeddingModel
-from kura.k_means import KmeansClusteringMethod
+from kura.k_means import KmeansClusteringMethod, MiniBatchKmeansClusteringMethod
 from kura.types import ConversationSummary, Cluster, GeneratedCluster
 from tqdm.asyncio import tqdm_asyncio
 import numpy as np

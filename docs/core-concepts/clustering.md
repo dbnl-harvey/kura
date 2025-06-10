@@ -108,6 +108,124 @@ The cluster name should be a sentence in the imperative that captures the user's
 
 ---
 
+## Clustering Algorithms
+
+Kura supports multiple clustering algorithms through the `BaseClusteringMethod` interface. Each algorithm has different characteristics and is suitable for different use cases.
+
+### Standard K-means (`KmeansClusteringMethod`)
+
+The default clustering method uses scikit-learn's standard K-means algorithm. This approach loads all embeddings into memory and computes centroids using the full dataset.
+
+**Best for:**
+- Small to medium datasets (< 50k conversations)  
+- When clustering accuracy is critical
+- Reproducible results (deterministic with fixed random seed)
+- Development and testing scenarios
+
+**Characteristics:**
+- **Memory usage:** High - loads entire embedding matrix into memory
+- **Speed:** Moderate - full batch processing
+- **Accuracy:** High - uses complete dataset for centroid calculation
+- **Deterministic:** Yes - same results with same random seed
+
+**Example usage:**
+```python
+from kura import ClusterModel, KmeansClusteringMethod
+
+model = ClusterModel(
+    clustering_method=KmeansClusteringMethod(clusters_per_group=10)
+)
+```
+
+### MiniBatch K-means (`MiniBatchKmeansClusteringMethod`)
+
+Optimized for large datasets, MiniBatch K-means processes data in small batches rather than loading everything into memory at once. This algorithm addresses the scalability bottlenecks identified in [Issue #92](https://github.com/567-labs/kura/issues/92).
+
+**Best for:**
+- Large datasets (100k+ conversations)
+- Memory-constrained environments  
+- Production deployments with limited resources
+- When clustering speed is more important than perfect accuracy
+
+**Characteristics:**
+- **Memory usage:** Low - processes data in configurable batch sizes
+- **Speed:** Fast - incremental updates with early convergence
+- **Accuracy:** Good - slightly less accurate due to stochastic nature
+- **Deterministic:** No - results may vary between runs
+
+**Configuration parameters:**
+- `clusters_per_group`: Target items per cluster (default: 10)
+- `batch_size`: Mini-batch size for processing (default: 1000)
+- `max_iter`: Maximum iterations (default: 100) 
+- `random_state`: Random seed for reproducibility (default: 42)
+
+**Example usage:**
+```python
+from kura import ClusterModel, MiniBatchKmeansClusteringMethod
+
+# For large datasets
+model = ClusterModel(
+    clustering_method=MiniBatchKmeansClusteringMethod(
+        clusters_per_group=15,
+        batch_size=2000,  # Larger batches for better stability
+        max_iter=150,
+        random_state=42
+    )
+)
+```
+
+### Algorithm Comparison
+
+| Feature | K-means | MiniBatch K-means |
+|---------|---------|-------------------|
+| **Dataset Size** | < 50k conversations | 100k+ conversations |
+| **Memory Usage** | High (full matrix) | Low (batch-wise) |
+| **Processing Speed** | Moderate | Fast |
+| **Clustering Quality** | High | Good |
+| **Reproducibility** | Deterministic | Stochastic |
+| **Use Case** | Development, accuracy-critical | Production, large-scale |
+
+### Memory Usage Comparison
+
+For a dataset with 100,000 conversations using OpenAI embeddings (1536 dimensions):
+
+- **Standard K-means:** ~1.2GB for embedding matrix alone
+- **MiniBatch K-means:** ~12MB peak usage (with batch_size=1000)
+
+### When to Switch Algorithms
+
+**Upgrade to MiniBatch K-means when:**
+- Experiencing out-of-memory errors with standard K-means
+- Processing time becomes prohibitive (> 30 minutes)
+- Working with 50k+ conversations
+- Memory usage exceeds available system RAM
+
+**Performance Monitoring:**
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+
+# Both algorithms provide detailed logging for monitoring:
+# - Cluster size distributions
+# - Processing times
+# - Memory usage patterns
+```
+
+### Custom Clustering Methods
+
+You can implement custom clustering algorithms by extending `BaseClusteringMethod`:
+
+```python
+from kura.base_classes import BaseClusteringMethod
+
+class CustomClusteringMethod(BaseClusteringMethod):
+    def cluster(self, items: list[dict]) -> dict[int, list]:
+        # Your clustering implementation
+        pass
+```
+
+---
+
 ## Hierarchical Analysis with Meta-Clustering
 
 While the `ClusterModel` produces a flat list of semantically distinct clusters, Kura also supports the creation of hierarchical cluster structures through its **meta-clustering** capabilities (see [Meta-Clustering](meta-clustering.md)). This next step takes the output of the initial clustering (a list of `Cluster` objects) and groups these clusters into higher-level, more general parent clusters.
