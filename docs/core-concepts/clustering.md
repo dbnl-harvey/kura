@@ -108,6 +108,91 @@ The cluster name should be a sentence in the imperative that captures the user's
 
 ---
 
+## Clustering Methods: K-Means vs HDBSCAN
+
+While K-means clustering is the default method in Kura, **HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise)** often provides superior results for conversation clustering tasks. Understanding when and why to use each method can significantly improve your clustering outcomes.
+
+### Why HDBSCAN is Often Better for Conversations
+
+**1. Natural Cluster Discovery**
+- **K-means** in Kura calculates the number of clusters based on a target group size (conversations per cluster), which may not reflect natural topic boundaries
+- **HDBSCAN** automatically discovers the optimal number of clusters based on data density, making it ideal for exploratory analysis
+
+**2. Handles Varying Cluster Densities**
+- **K-means** assumes clusters are spherical and roughly equal in size, which rarely matches real conversation patterns
+- **HDBSCAN** can find clusters of different shapes and densities, better reflecting how conversational topics naturally group
+
+**3. Automatic Noise Detection**
+- **K-means** forces every conversation into a cluster, even outliers and noise
+- **HDBSCAN** identifies and separates outlier conversations that don't belong to any clear topic, improving cluster quality
+
+**4. Hierarchical Structure**
+- **K-means** produces flat clusters only
+- **HDBSCAN** naturally creates a hierarchical tree of clusters, showing how topics relate and can be subdivided
+
+### When to Use Each Method
+
+| Scenario | Recommended Method | Reason |
+|----------|-------------------|---------|
+| **Exploratory Analysis** | HDBSCAN | Don't know how many topics exist |
+| **Target Group Size** | K-means | When you want roughly equal-sized clusters |
+| **Mixed Topic Densities** | HDBSCAN | Some topics are common, others rare |
+| **Noise/Outlier Handling** | HDBSCAN | Want to identify conversations that don't fit clear patterns |
+| **Large Datasets** | HDBSCAN | Better scalability for high-dimensional embedding spaces |
+| **Hierarchical Analysis** | HDBSCAN | Need to understand topic relationships and sub-topics |
+
+### Using HDBSCAN in Kura
+
+To use HDBSCAN instead of K-means, initialize your `ClusterModel` with the `HDBSCANClusteringMethod`:
+
+```python
+from kura.hdbscan import HDBSCANClusteringMethod
+from kura.cluster import ClusterModel
+
+# Configure HDBSCAN clustering
+hdbscan_clustering = HDBSCANClusteringMethod(
+    min_cluster_size=10,              # Minimum conversations per cluster
+    min_samples=5,                    # Minimum samples for core points
+    cluster_selection_epsilon=0.0,    # Distance threshold for merging
+    cluster_selection_method="eom",   # Excess of Mass method
+    metric="euclidean"                # Distance metric for embeddings
+)
+
+# Create cluster model with HDBSCAN
+cluster_model = ClusterModel(
+    clustering_method=hdbscan_clustering,
+    embedding_model=OpenAIEmbeddingModel(),
+    max_concurrent_requests=50,
+    model="openai/gpt-4o-mini",
+)
+```
+
+### Key HDBSCAN Parameters
+
+- **`min_cluster_size`**: Minimum number of conversations required to form a cluster. Larger values create fewer, more substantial clusters
+- **`min_samples`**: Number of conversations in a neighborhood for a point to be considered a core point. Lower values allow more fine-grained clustering
+- **`cluster_selection_method`**:
+  - `"eom"` (Excess of Mass): Better for finding clusters of varying densities
+  - `"leaf"`: Better when you want many small, tight clusters
+- **`metric`**: Distance measure for embeddings. `"euclidean"` works well for normalized text embeddings
+
+### Example Results Comparison
+
+For a dataset of 500 customer support conversations:
+
+**K-means (k=10)**:
+- Forces exactly 10 clusters
+- May group unrelated edge cases together
+- Equal-sized clusters regardless of actual topic frequency
+
+**HDBSCAN (min_cluster_size=15)**:
+- Discovers 8 meaningful clusters automatically
+- Identifies 23 outlier conversations as noise
+- Clusters vary in size based on topic popularity
+- Shows how "billing issues" splits into "payment failures" and "invoice questions"
+
+---
+
 ## Hierarchical Analysis with Meta-Clustering
 
 While the `ClusterModel` produces a flat list of semantically distinct clusters, Kura also supports the creation of hierarchical cluster structures through its **meta-clustering** capabilities (see [Meta-Clustering](meta-clustering.md)). This next step takes the output of the initial clustering (a list of `Cluster` objects) and groups these clusters into higher-level, more general parent clusters.
