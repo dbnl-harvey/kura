@@ -13,7 +13,7 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
     def __init__(
         self,
         min_cluster_size: int = 10,
-        min_samples: int = None,
+        min_samples: int | None = None,
         cluster_selection_epsilon: float = 0.0,
         alpha: float = 1.0,
         cluster_selection_method: str = "eom",
