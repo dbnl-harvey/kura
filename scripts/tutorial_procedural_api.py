@@ -29,11 +29,6 @@ with timer("Importing kura modules"):
     )
 
     # Import visualization functions
-    from kura.v1.visualization import (
-        visualise_clusters_rich,
-        visualise_from_checkpoint_manager,
-        visualise_pipeline_results,
-    )
 
     # Import existing Kura models and types
     from kura.types import Conversation
@@ -162,85 +157,3 @@ async def process_with_progress():
 
 
 reduced_clusters, projected_clusters = asyncio.run(process_with_progress())
-
-print(f"\nPipeline complete! Generated {len(projected_clusters)} projected clusters!\n")
-
-print("Processing Summary:")
-print(f"  • Input conversations: {len(conversations)}")
-print(f"  • Final reduced clusters: {len(reduced_clusters)}")
-print(f"  • Final projected clusters: {len(projected_clusters)}")
-print(f"  • Checkpoints saved to: {checkpoint_manager.checkpoint_dir}")
-print()
-
-print("=" * 80)
-print("VISUALIZATION DEMONSTRATION")
-print("=" * 80)
-
-print("\n1. Basic cluster visualization (from checkpoint):")
-print("-" * 50)
-with timer("Basic visualization"):
-    visualise_from_checkpoint_manager(
-        checkpoint_manager, meta_cluster_model, style="basic"
-    )
-
-print("\n2. Enhanced cluster visualization (from pipeline results):")
-print("-" * 50)
-with timer("Enhanced visualization"):
-    visualise_pipeline_results(reduced_clusters, style="enhanced")
-
-print("\n3. Rich cluster visualization (with console integration):")
-print("-" * 50)
-with timer("Rich visualization"):
-    visualise_clusters_rich(reduced_clusters, console=console)
-
-print("\n4. Direct checkpoint path visualization:")
-print("-" * 50)
-checkpoint_path = checkpoint_manager.get_checkpoint_path(
-    meta_cluster_model.checkpoint_filename
-)
-print(f"Loading from: {checkpoint_path}")
-with timer("Direct checkpoint visualization"):
-    visualise_from_checkpoint_manager(
-        checkpoint_manager, meta_cluster_model, style="enhanced"
-    )
-
-print("=" * 80)
-print("✨ TUTORIAL COMPLETE!")
-print("=" * 80)
-
-print("Procedural API Benefits Demonstrated:")
-print("  ✅ Step-by-step processing with individual control")
-print("  ✅ Flexible checkpoint management")
-print("  • Clear separation of concerns")
-print("  • Easy to customize individual steps")
-print("  • Multiple visualization options")
-print()
-
-print("MiniBatch KMeans Clustering Features Demonstrated:")
-print("  • Memory-efficient clustering for large datasets")
-print("  • Faster processing with mini-batch approach")
-print("  • Configurable batch size and convergence parameters")
-print("  • Reproducible results with random seed control")
-print("  • Scalable to handle 100k+ conversations")
-print()
-
-print("Visualization Features Demonstrated:")
-print("  • Basic hierarchical tree view")
-print("  • Enhanced view with statistics and progress bars")
-print("  • Rich-formatted output with colors and tables")
-print("  • Direct checkpoint integration")
-print("  • Pipeline result visualization")
-print()
-
-print("CheckpointManager Integration:")
-print("  • Automatic checkpoint loading and saving")
-print("  • Seamless integration with visualization functions")
-print("  • Resume processing from any checkpoint")
-print("  • Visualize results without re-running pipeline")
-print()
-
-print(f"Check '{checkpoint_manager.checkpoint_dir}' for saved intermediate results!")
-print(
-    "Try different MiniBatch KMeans parameters by modifying the MiniBatchKmeansClusteringMethod initialization!"
-)
-print("Customize visualization by passing different clusters or checkpoint paths!")
