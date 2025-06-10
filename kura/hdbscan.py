@@ -18,11 +18,11 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
         alpha: float = 1.0,
         cluster_selection_method: str = "eom",
         metric: str = "euclidean",
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize HDBSCAN clustering method.
-        
+
         Args:
             min_cluster_size: The minimum size of clusters; single linkage splits that contain
                             fewer points than this will be considered points "falling out" of a cluster
@@ -42,7 +42,7 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
         self.cluster_selection_method = cluster_selection_method
         self.metric = metric
         self.kwargs = kwargs
-        
+
         logger.info(
             f"Initialized HDBSCANClusteringMethod with min_cluster_size={min_cluster_size}, "
             f"min_samples={self.min_samples}, cluster_selection_epsilon={cluster_selection_epsilon}, "
@@ -61,7 +61,7 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
             "embedding": list[float],
             "item": any,
         }
-        
+
         Returns:
             A dictionary mapping cluster IDs to lists of items in that cluster.
             Noise points (outliers) are assigned to cluster ID -1.
@@ -89,7 +89,7 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
                 alpha=self.alpha,
                 cluster_selection_method=self.cluster_selection_method,
                 metric=self.metric,
-                **self.kwargs
+                **self.kwargs,
             )
 
             # Perform clustering
@@ -114,18 +114,20 @@ class HDBSCANClusteringMethod(BaseClusteringMethod):
                 max_cluster_id = max(result.keys()) if result else -1
                 noise_cluster_id = max_cluster_id + 1
                 result[noise_cluster_id] = noise_items
-                logger.info(f"Reassigned {len(noise_items)} noise points to cluster {noise_cluster_id}")
+                logger.info(
+                    f"Reassigned {len(noise_items)} noise points to cluster {noise_cluster_id}"
+                )
 
             # Log cluster size distribution
             cluster_sizes = [len(cluster_items) for cluster_items in result.values()]
             noise_count = len([label for label in cluster_labels if label == -1])
-            
+
             logger.info(
                 f"HDBSCAN clustering completed: {len(result)} clusters created with sizes {cluster_sizes}"
             )
             if noise_count > 0:
                 logger.info(f"Found {noise_count} noise points (outliers)")
-            
+
             if cluster_sizes:
                 logger.debug(
                     f"Cluster size stats - min: {min(cluster_sizes)}, max: {max(cluster_sizes)}, "
