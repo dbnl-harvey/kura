@@ -263,6 +263,9 @@ class HFDatasetCheckpointManager:
     ) -> T:
         """Convert dictionary from HF datasets back to Pydantic model."""
 
+        # Make a copy to avoid modifying the original data
+        data = dict(data)
+
         if checkpoint_type == "conversations":
             # Handle Conversation model
             # Handle timestamp conversion - could be int, pandas Timestamp, or already datetime
@@ -275,16 +278,67 @@ class HFDatasetCheckpointManager:
                 data["created_at"] = data["created_at"].to_pydatetime()
             # Otherwise it's already a datetime object
 
-            for msg in data["messages"]:
-                if isinstance(msg["created_at"], (int, float)):
-                    msg["created_at"] = datetime.fromtimestamp(
-                        msg["created_at"] / 1_000_000_000
-                    )
-                elif hasattr(msg["created_at"], "timestamp"):
-                    # Pandas Timestamp object
-                    msg["created_at"] = msg["created_at"].to_pydatetime()
-                # Otherwise it's already a datetime object
+            # Handle messages - HF datasets converts list of dicts to dict of lists
+            messages = data.get("messages", [])
+            processed_messages = []
 
+            # Check if messages is in HF datasets format (dict with lists) or regular format
+            if isinstance(messages, dict) and "created_at" in messages:
+                # Convert from column-oriented format back to row-oriented format
+                num_messages = len(messages["created_at"])
+                for i in range(num_messages):
+                    msg_dict = {}
+
+                    # Extract each field for this message
+                    for field in ["created_at", "role", "content"]:
+                        if field in messages:
+                            msg_dict[field] = messages[field][i]
+
+                    # Convert timestamp
+                    if isinstance(msg_dict["created_at"], (int, float)):
+                        msg_dict["created_at"] = datetime.fromtimestamp(
+                            msg_dict["created_at"] / 1_000_000_000
+                        )
+                    elif hasattr(msg_dict["created_at"], "timestamp"):
+                        # Pandas Timestamp object
+                        msg_dict["created_at"] = msg_dict["created_at"].to_pydatetime()
+                    # Otherwise it's already a datetime object
+
+                    # Convert role from ClassLabel index back to string
+                    if isinstance(msg_dict.get("role"), int):
+                        role_names = ["user", "assistant"]
+                        if 0 <= msg_dict["role"] < len(role_names):
+                            msg_dict["role"] = role_names[msg_dict["role"]]
+
+                    processed_messages.append(msg_dict)
+            else:
+                # Handle regular list format
+                for i, msg in enumerate(messages):
+                    # Handle case where msg might be a dict-like object but not exactly a dict
+                    if hasattr(msg, "keys"):
+                        msg_dict = dict(msg)
+                    elif isinstance(msg, dict):
+                        msg_dict = msg
+                    else:
+                        # Debug: print the actual type and content
+                        logger.error(
+                            f"Unexpected message type at index {i}: {type(msg)} = {msg}"
+                        )
+                        raise ValueError(f"Unexpected message format: {type(msg)}")
+
+                    # Convert timestamp
+                    if isinstance(msg_dict["created_at"], (int, float)):
+                        msg_dict["created_at"] = datetime.fromtimestamp(
+                            msg_dict["created_at"] / 1_000_000_000
+                        )
+                    elif hasattr(msg_dict["created_at"], "timestamp"):
+                        # Pandas Timestamp object
+                        msg_dict["created_at"] = msg_dict["created_at"].to_pydatetime()
+                    # Otherwise it's already a datetime object
+
+                    processed_messages.append(msg_dict)
+
+            data["messages"] = processed_messages
             data["metadata"] = self._deserialize_metadata(data["metadata"])
 
         elif checkpoint_type == "summaries":
@@ -313,18 +367,22 @@ class HFDatasetCheckpointManager:
 
         return model_class.model_validate(data)
 
-    def save_checkpoint(
-        self, filename: str, data: List[T], checkpoint_type: str
-    ) -> None:
+    def save_checkpoint(self, filename: str, data: List[T], **kwargs) -> None:
         """Save data to a checkpoint using HuggingFace datasets.
 
         Args:
             filename: Name of the checkpoint (without extension)
             data: List of model instances to save
-            checkpoint_type: Type of checkpoint for schema selection
+            **kwargs: Additional arguments, including:
+                checkpoint_type: Type of checkpoint for schema selection
         """
         if not self.enabled or not data:
             return
+
+        # Get checkpoint_type from kwargs or infer from data
+        checkpoint_type = kwargs.get("checkpoint_type")
+        if not checkpoint_type:
+            checkpoint_type = self._infer_checkpoint_type(data[0])
 
         # Convert models to dictionaries
         dict_data = [self._model_to_dict(item, checkpoint_type) for item in data]
@@ -361,27 +419,44 @@ class HFDatasetCheckpointManager:
             except Exception as e:
                 logger.warning(f"Failed to push to hub: {e}")
 
+    def _infer_checkpoint_type(self, data_item: BaseModel) -> str:
+        """Infer checkpoint type from the data model class."""
+        from kura.types import Conversation, ConversationSummary, Cluster
+        from kura.types.dimensionality import ProjectedCluster
+
+        if isinstance(data_item, Conversation):
+            return "conversations"
+        elif isinstance(data_item, ConversationSummary):
+            return "summaries"
+        elif isinstance(data_item, ProjectedCluster):
+            return "projected_clusters"
+        elif isinstance(data_item, Cluster):
+            return "clusters"
+        else:
+            # Default fallback
+            return "unknown"
+
     def load_checkpoint(
-        self,
-        filename: str,
-        model_class: type[T],
-        *,
-        streaming: Optional[bool] = None,
-        checkpoint_type: str = "",
+        self, filename: str, model_class: type[T], **kwargs
     ) -> Optional[List[T]]:
         """Load data from a checkpoint using HuggingFace datasets.
 
         Args:
             filename: Name of the checkpoint (without extension)
             model_class: Pydantic model class for deserializing the data
-            streaming: Whether to use streaming mode (overrides default)
-            checkpoint_type: Type of checkpoint for proper deserialization
+            **kwargs: Additional arguments, including:
+                streaming: Whether to use streaming mode (overrides default)
+                checkpoint_type: Type of checkpoint for proper deserialization
 
         Returns:
             List of model instances if checkpoint exists, None otherwise
         """
         if not self.enabled:
             return None
+
+        # Get parameters from kwargs
+        streaming = kwargs.get("streaming")
+        checkpoint_type = kwargs.get("checkpoint_type", "")
 
         use_streaming = streaming if streaming is not None else self.streaming
 

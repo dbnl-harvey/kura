@@ -23,6 +23,7 @@ try:
 except ImportError:
     PYARROW_AVAILABLE = False
 
+from kura.base_classes import BaseCheckpointManager
 from kura.types import Conversation, Cluster, ConversationSummary
 from kura.types.dimensionality import ProjectedCluster
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T", bound=BaseModel)
 
 
-class ParquetCheckpointManager:
+class ParquetCheckpointManager(BaseCheckpointManager):
     """Handles checkpoint loading and saving using Parquet format for efficient storage."""
 
     def __init__(
@@ -50,13 +51,9 @@ class ParquetCheckpointManager:
                 "Install with: pip install pyarrow"
             )
 
-        self.checkpoint_dir = Path(checkpoint_dir)
-        self.enabled = enabled
+        super().__init__(checkpoint_dir, enabled=enabled)
         self.compression = compression
         self.schemas = self._define_schemas()
-
-        if self.enabled:
-            self.setup_checkpoint_dir()
 
     def setup_checkpoint_dir(self) -> None:
         """Create checkpoint directory if it doesn't exist."""
@@ -326,12 +323,15 @@ class ParquetCheckpointManager:
         else:
             raise ValueError(f"Unknown model class: {model_class}")
 
-    def load_checkpoint(self, filename: str, model_class: type[T]) -> Optional[List[T]]:
+    def load_checkpoint(
+        self, filename: str, model_class: type[T], **kwargs
+    ) -> Optional[List[T]]:
         """Load data from a Parquet checkpoint file.
 
         Args:
             filename: Name of the checkpoint file
             model_class: Pydantic model class for deserializing the data
+            **kwargs: Additional arguments (unused in Parquet implementation)
 
         Returns:
             List of model instances if checkpoint exists, None otherwise
@@ -361,12 +361,13 @@ class ParquetCheckpointManager:
             logger.error(f"Failed to load checkpoint from {checkpoint_path}: {e}")
             return None
 
-    def save_checkpoint(self, filename: str, data: List[T]) -> None:
+    def save_checkpoint(self, filename: str, data: List[T], **kwargs) -> None:
         """Save data to a Parquet checkpoint file.
 
         Args:
             filename: Name of the checkpoint file
             data: List of model instances to save
+            **kwargs: Additional arguments (unused in Parquet implementation)
         """
         if not self.enabled or not data:
             return

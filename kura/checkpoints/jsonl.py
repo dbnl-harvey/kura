@@ -7,15 +7,16 @@ intermediate pipeline results. This is kept for backward compatibility.
 
 import logging
 from typing import Optional, TypeVar, List
-import os
 from pydantic import BaseModel
+
+from kura.base_classes import BaseCheckpointManager
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
 
-class JSONLCheckpointManager:
+class JSONLCheckpointManager(BaseCheckpointManager):
     """Handles checkpoint loading and saving using JSONL files.
 
     This is the original checkpoint system that stores each checkpoint as
@@ -29,28 +30,23 @@ class JSONLCheckpointManager:
             checkpoint_dir: Directory for saving checkpoints
             enabled: Whether checkpointing is enabled
         """
-        self.checkpoint_dir = checkpoint_dir
-        self.enabled = enabled
-
-        if self.enabled:
-            self.setup_checkpoint_dir()
+        super().__init__(checkpoint_dir, enabled=enabled)
 
     def setup_checkpoint_dir(self) -> None:
         """Create checkpoint directory if it doesn't exist."""
-        if not os.path.exists(self.checkpoint_dir):
-            os.makedirs(self.checkpoint_dir)
+        if not self.checkpoint_dir.exists():
+            self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Created checkpoint directory: {self.checkpoint_dir}")
 
-    def get_checkpoint_path(self, filename: str) -> str:
-        """Get full path for a checkpoint file."""
-        return os.path.join(self.checkpoint_dir, filename)
-
-    def load_checkpoint(self, filename: str, model_class: type[T]) -> Optional[List[T]]:
+    def load_checkpoint(
+        self, filename: str, model_class: type[T], **kwargs
+    ) -> Optional[List[T]]:
         """Load data from a checkpoint file if it exists.
 
         Args:
             filename: Name of the checkpoint file
             model_class: Pydantic model class for deserializing the data
+            **kwargs: Additional arguments (unused in JSONL implementation)
 
         Returns:
             List of model instances if checkpoint exists, None otherwise
@@ -59,7 +55,7 @@ class JSONLCheckpointManager:
             return None
 
         checkpoint_path = self.get_checkpoint_path(filename)
-        if os.path.exists(checkpoint_path):
+        if checkpoint_path.exists():
             logger.info(
                 f"Loading checkpoint from {checkpoint_path} for {model_class.__name__}"
             )
@@ -69,12 +65,13 @@ class JSONLCheckpointManager:
                 return data if data else None
         return None
 
-    def save_checkpoint(self, filename: str, data: List[T]) -> None:
+    def save_checkpoint(self, filename: str, data: List[T], **kwargs) -> None:
         """Save data to a checkpoint file.
 
         Args:
             filename: Name of the checkpoint file
             data: List of model instances to save
+            **kwargs: Additional arguments (unused in JSONL implementation)
         """
         if not self.enabled:
             return
@@ -87,13 +84,13 @@ class JSONLCheckpointManager:
 
     def list_checkpoints(self) -> List[str]:
         """List all available checkpoint files."""
-        if not self.enabled or not os.path.exists(self.checkpoint_dir):
+        if not self.enabled or not self.checkpoint_dir.exists():
             return []
 
         return [
-            f
-            for f in os.listdir(self.checkpoint_dir)
-            if f.endswith((".jsonl", ".json"))
+            f.name
+            for f in self.checkpoint_dir.iterdir()
+            if f.is_file() and f.suffix in (".jsonl", ".json")
         ]
 
     def delete_checkpoint(self, filename: str) -> bool:
@@ -109,8 +106,8 @@ class JSONLCheckpointManager:
             return False
 
         checkpoint_path = self.get_checkpoint_path(filename)
-        if os.path.exists(checkpoint_path):
-            os.remove(checkpoint_path)
+        if checkpoint_path.exists():
+            checkpoint_path.unlink()
             logger.info(f"Deleted checkpoint: {checkpoint_path}")
             return True
         return False
