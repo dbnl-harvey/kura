@@ -3,12 +3,41 @@ import asyncio
 from contextlib import contextmanager
 
 
-@contextmanager
-def timer(message):
-    start_time = time.time()
-    yield
-    end_time = time.time()
-    print(f"{message} took {end_time - start_time:.2f} seconds")
+class TimerManager:
+    """A timer class that collects timing data for review."""
+
+    def __init__(self):
+        self.timings = {}
+
+    @contextmanager
+    def timer(self, message):
+        """Context manager to time operations and store results."""
+        start_time = time.time()
+        yield
+        end_time = time.time()
+        duration = end_time - start_time
+        self.timings[message] = duration
+        print(f"{message} took {duration:.2f} seconds")
+
+    def print_summary(self):
+        """Print a summary of all collected timings."""
+        print(f"\n{'=' * 60}")
+        print(f"{'TIMING SUMMARY':^60}")
+        print(f"{'=' * 60}")
+
+        total_time = sum(self.timings.values())
+
+        for operation, duration in self.timings.items():
+            percentage = (duration / total_time * 100) if total_time > 0 else 0
+            print(f"{operation:<40} {duration:>8.2f}s ({percentage:>5.1f}%)")
+
+        print(f"{'-' * 60}")
+        print(f"{'Total Time':<40} {total_time:>8.2f}s")
+        print(f"{'=' * 60}\n")
+
+
+# Create a global timer manager instance
+timer_manager = TimerManager()
 
 
 def show_section_header(title):
@@ -18,7 +47,7 @@ def show_section_header(title):
     print(f"{'=' * 60}\n")
 
 
-with timer("Importing kura modules"):
+with timer_manager.timer("Importing kura modules"):
     # Import the procedural Kura v1 components
     from kura import (
         summarise_conversations,
@@ -27,10 +56,11 @@ with timer("Importing kura modules"):
         reduce_dimensionality_from_clusters,
         CheckpointManager,
     )
-    
+
     # Import Parquet checkpoint manager if available
     try:
         from kura import ParquetCheckpointManager
+
         PARQUET_AVAILABLE = True
     except ImportError:
         ParquetCheckpointManager = None
@@ -45,7 +75,7 @@ with timer("Importing kura modules"):
     from kura.meta_cluster import MetaClusterModel
     from kura.dimensionality import HDBUMAP
 
-    # Import MiniBatch KMeans clustering method
+    # Import all available clustering methods
     from kura.k_means import MiniBatchKmeansClusteringMethod
 
     from rich.console import Console
@@ -73,7 +103,7 @@ dimensionality_model = HDBUMAP()
 # Set up checkpointing
 checkpoint_manager = CheckpointManager("./tutorial_checkpoints", enabled=True)
 
-with timer("Loading sample conversations"):
+with timer_manager.timer("Loading sample conversations"):
     conversations = Conversation.from_hf_dataset(
         "ivanleomk/synthetic-gemini-conversations", split="train"
     )
@@ -83,7 +113,7 @@ print(f"Loaded {len(conversations)} conversations successfully!\n")
 # Save conversations to JSON for database loading
 show_section_header("Saving Conversations")
 
-with timer("Saving conversations to JSON"):
+with timer_manager.timer("Saving conversations to JSON"):
     import json
     import os
 
@@ -106,13 +136,6 @@ show_section_header("Sample Data Examination")
 
 sample_conversation = conversations[0]
 
-# Print conversation details
-print("Sample Conversation Details:")
-print(f"Chat ID: {sample_conversation.chat_id}")
-print(f"Created At: {sample_conversation.created_at}")
-print(f"Number of Messages: {len(sample_conversation.messages)}")
-print()
-
 # Sample messages
 print("Sample Messages:")
 for i, msg in enumerate(sample_conversation.messages[:3]):
@@ -132,28 +155,28 @@ print("Starting conversation clustering with MiniBatch KMeans...")
 async def process_with_progress():
     """Process conversations step by step using the procedural API with MiniBatch KMeans clustering."""
     print("Step 1: Generating conversation summaries...")
-    with timer("Conversation summarization"):
+    with timer_manager.timer("Conversation summarization"):
         summaries = await summarise_conversations(
             conversations, model=summary_model, checkpoint_manager=checkpoint_manager
         )
     print(f"Generated {len(summaries)} summaries")
 
     print("Step 2: Generating base clusters from summaries using MiniBatch KMeans...")
-    with timer("MiniBatch KMeans clustering"):
+    with timer_manager.timer("MiniBatch KMeans clustering"):
         clusters = await generate_base_clusters_from_conversation_summaries(
             summaries, model=cluster_model, checkpoint_manager=checkpoint_manager
         )
     print(f"Generated {len(clusters)} base clusters using MiniBatch KMeans")
 
     print("Step 3: Reducing clusters hierarchically...")
-    with timer("Meta clustering"):
+    with timer_manager.timer("Meta clustering"):
         reduced_clusters = await reduce_clusters_from_base_clusters(
             clusters, model=meta_cluster_model, checkpoint_manager=checkpoint_manager
         )
     print(f"Reduced to {len(reduced_clusters)} meta clusters")
 
     print("Step 4: Projecting clusters to 2D for visualization...")
-    with timer("Dimensionality reduction"):
+    with timer_manager.timer("Dimensionality reduction"):
         projected_clusters = await reduce_dimensionality_from_clusters(
             reduced_clusters,
             model=dimensionality_model,
@@ -169,55 +192,69 @@ reduced_clusters, projected_clusters = asyncio.run(process_with_progress())
 # Parquet format demonstration (if available)
 if PARQUET_AVAILABLE:
     show_section_header("Parquet Format Demonstration")
-    
+
     print("Demonstrating Parquet checkpoint format for efficient storage...")
-    print("This format offers significant space savings and faster loading for large datasets.\n")
-    
+    print(
+        "This format offers significant space savings and faster loading for large datasets.\n"
+    )
+
     # Set up Parquet checkpoint manager
-    parquet_checkpoint_manager = ParquetCheckpointManager("./tutorial_parquet_checkpoints", enabled=True)
-    
+    parquet_checkpoint_manager = ParquetCheckpointManager(
+        "./tutorial_parquet_checkpoints", enabled=True
+    )
+
     async def process_with_parquet():
         """Process conversations using Parquet checkpoints."""
         print("Step 1: Generating summaries with Parquet checkpoints...")
-        with timer("Parquet summarization"):
+        with timer_manager.timer("Parquet summarization"):
             summaries = await summarise_conversations(
-                conversations, model=summary_model, checkpoint_manager=parquet_checkpoint_manager
+                conversations,
+                model=summary_model,
+                checkpoint_manager=parquet_checkpoint_manager,
             )
         print(f"Generated {len(summaries)} summaries using Parquet format")
-        
+
         print("Step 2: Generating clusters with Parquet checkpoints...")
-        with timer("Parquet clustering"):
+        with timer_manager.timer("Parquet clustering"):
             clusters = await generate_base_clusters_from_conversation_summaries(
-                summaries, model=cluster_model, checkpoint_manager=parquet_checkpoint_manager
+                summaries,
+                model=cluster_model,
+                checkpoint_manager=parquet_checkpoint_manager,
             )
         print(f"Generated {len(clusters)} clusters using Parquet format")
-        
+
         print("Step 3: Meta clustering with Parquet checkpoints...")
-        with timer("Parquet meta clustering"):
+        with timer_manager.timer("Parquet meta clustering"):
             reduced_clusters = await reduce_clusters_from_base_clusters(
-                clusters, model=meta_cluster_model, checkpoint_manager=parquet_checkpoint_manager
+                clusters,
+                model=meta_cluster_model,
+                checkpoint_manager=parquet_checkpoint_manager,
             )
         print(f"Reduced to {len(reduced_clusters)} meta clusters using Parquet format")
-        
+
         print("Step 4: Dimensionality reduction with Parquet checkpoints...")
-        with timer("Parquet dimensionality reduction"):
+        with timer_manager.timer("Parquet dimensionality reduction"):
             projected_clusters = await reduce_dimensionality_from_clusters(
                 reduced_clusters,
                 model=dimensionality_model,
                 checkpoint_manager=parquet_checkpoint_manager,
             )
-        print(f"Generated {len(projected_clusters)} projected clusters using Parquet format")
-        
+        print(
+            f"Generated {len(projected_clusters)} projected clusters using Parquet format"
+        )
+
         return reduced_clusters, projected_clusters
-    
+
     # Run with Parquet
-    parquet_reduced_clusters, parquet_projected_clusters = asyncio.run(process_with_parquet())
-    
+    parquet_reduced_clusters, parquet_projected_clusters = asyncio.run(
+        process_with_parquet()
+    )
+
     # Compare file sizes
     show_section_header("Format Comparison")
-    
+
     import os
-    
+
     def get_directory_size(directory):
         """Get total size of all files in a directory."""
         total_size = 0
@@ -227,59 +264,63 @@ if PARQUET_AVAILABLE:
                 if os.path.isfile(filepath):
                     total_size += os.path.getsize(filepath)
         return total_size
-    
+
     def format_size(size_bytes):
         """Format file size in human-readable format."""
         if size_bytes == 0:
             return "0 B"
-        
-        units = ['B', 'KB', 'MB', 'GB']
+
+        units = ["B", "KB", "MB", "GB"]
         unit_index = 0
         size = float(size_bytes)
-        
+
         while size >= 1024 and unit_index < len(units) - 1:
             size /= 1024
             unit_index += 1
-        
+
         return f"{size:.2f} {units[unit_index]}"
-    
+
     # Calculate sizes
     jsonl_size = get_directory_size("./tutorial_checkpoints")
     parquet_size = get_directory_size("./tutorial_parquet_checkpoints")
-    
+
     print("File Size Comparison:")
     print(f"JSONL format:    {format_size(jsonl_size)}")
     print(f"Parquet format:  {format_size(parquet_size)}")
-    
+
     if jsonl_size > 0 and parquet_size > 0:
         reduction = (jsonl_size - parquet_size) / jsonl_size * 100
         compression_ratio = jsonl_size / parquet_size
         space_saved = jsonl_size - parquet_size
-        
-        print(f"\nSpace Savings:")
+
+        print("\nSpace Savings:")
         print(f"• {reduction:.1f}% reduction in file size")
         print(f"• {compression_ratio:.1f}x compression ratio")
         print(f"• {format_size(space_saved)} space saved")
-        
-        print(f"\nBenefits of Parquet format:")
-        print(f"• Columnar storage ideal for embeddings and numerical data")
-        print(f"• Built-in compression (using snappy by default)")
-        print(f"• Faster loading for analytical workloads")
-        print(f"• Self-describing schema")
-        print(f"• Compatible with data science tools (pandas, polars, etc.)")
-    
-    print(f"\nTo use Parquet checkpoints in your code:")
-    print(f"```python")
-    print(f"from kura import ParquetCheckpointManager")
-    print(f"")
-    print(f"# Create Parquet checkpoint manager")
-    print(f"checkpoint_manager = ParquetCheckpointManager('./checkpoints', enabled=True)")
-    print(f"")
-    print(f"# Use in pipeline functions")
-    print(f"summaries = await summarise_conversations(")
-    print(f"    conversations, model=summary_model, checkpoint_manager=checkpoint_manager")
-    print(f")")
-    print(f"```")
+
+        print("\nBenefits of Parquet format:")
+        print("• Columnar storage ideal for embeddings and numerical data")
+        print("• Built-in compression (using snappy by default)")
+        print("• Faster loading for analytical workloads")
+        print("• Self-describing schema")
+        print("• Compatible with data science tools (pandas, polars, etc.)")
+
+    print("\nTo use Parquet checkpoints in your code:")
+    print("```python")
+    print("from kura import ParquetCheckpointManager")
+    print("")
+    print("# Create Parquet checkpoint manager")
+    print(
+        "checkpoint_manager = ParquetCheckpointManager('./checkpoints', enabled=True)"
+    )
+    print("")
+    print("# Use in pipeline functions")
+    print("summaries = await summarise_conversations(")
+    print(
+        "    conversations, model=summary_model, checkpoint_manager=checkpoint_manager"
+    )
+    print(")")
+    print("```")
 
 else:
     show_section_header("Parquet Format (Not Available)")
