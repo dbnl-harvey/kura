@@ -27,6 +27,14 @@ with timer("Importing kura modules"):
         reduce_dimensionality_from_clusters,
         CheckpointManager,
     )
+    
+    # Import Parquet checkpoint manager if available
+    try:
+        from kura import ParquetCheckpointManager
+        PARQUET_AVAILABLE = True
+    except ImportError:
+        ParquetCheckpointManager = None
+        PARQUET_AVAILABLE = False
 
     # Import visualization functions
 
@@ -157,3 +165,128 @@ async def process_with_progress():
 
 
 reduced_clusters, projected_clusters = asyncio.run(process_with_progress())
+
+# Parquet format demonstration (if available)
+if PARQUET_AVAILABLE:
+    show_section_header("Parquet Format Demonstration")
+    
+    print("Demonstrating Parquet checkpoint format for efficient storage...")
+    print("This format offers significant space savings and faster loading for large datasets.\n")
+    
+    # Set up Parquet checkpoint manager
+    parquet_checkpoint_manager = ParquetCheckpointManager("./tutorial_parquet_checkpoints", enabled=True)
+    
+    async def process_with_parquet():
+        """Process conversations using Parquet checkpoints."""
+        print("Step 1: Generating summaries with Parquet checkpoints...")
+        with timer("Parquet summarization"):
+            summaries = await summarise_conversations(
+                conversations, model=summary_model, checkpoint_manager=parquet_checkpoint_manager
+            )
+        print(f"Generated {len(summaries)} summaries using Parquet format")
+        
+        print("Step 2: Generating clusters with Parquet checkpoints...")
+        with timer("Parquet clustering"):
+            clusters = await generate_base_clusters_from_conversation_summaries(
+                summaries, model=cluster_model, checkpoint_manager=parquet_checkpoint_manager
+            )
+        print(f"Generated {len(clusters)} clusters using Parquet format")
+        
+        print("Step 3: Meta clustering with Parquet checkpoints...")
+        with timer("Parquet meta clustering"):
+            reduced_clusters = await reduce_clusters_from_base_clusters(
+                clusters, model=meta_cluster_model, checkpoint_manager=parquet_checkpoint_manager
+            )
+        print(f"Reduced to {len(reduced_clusters)} meta clusters using Parquet format")
+        
+        print("Step 4: Dimensionality reduction with Parquet checkpoints...")
+        with timer("Parquet dimensionality reduction"):
+            projected_clusters = await reduce_dimensionality_from_clusters(
+                reduced_clusters,
+                model=dimensionality_model,
+                checkpoint_manager=parquet_checkpoint_manager,
+            )
+        print(f"Generated {len(projected_clusters)} projected clusters using Parquet format")
+        
+        return reduced_clusters, projected_clusters
+    
+    # Run with Parquet
+    parquet_reduced_clusters, parquet_projected_clusters = asyncio.run(process_with_parquet())
+    
+    # Compare file sizes
+    show_section_header("Format Comparison")
+    
+    import os
+    
+    def get_directory_size(directory):
+        """Get total size of all files in a directory."""
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(directory):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                if os.path.isfile(filepath):
+                    total_size += os.path.getsize(filepath)
+        return total_size
+    
+    def format_size(size_bytes):
+        """Format file size in human-readable format."""
+        if size_bytes == 0:
+            return "0 B"
+        
+        units = ['B', 'KB', 'MB', 'GB']
+        unit_index = 0
+        size = float(size_bytes)
+        
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+        
+        return f"{size:.2f} {units[unit_index]}"
+    
+    # Calculate sizes
+    jsonl_size = get_directory_size("./tutorial_checkpoints")
+    parquet_size = get_directory_size("./tutorial_parquet_checkpoints")
+    
+    print("File Size Comparison:")
+    print(f"JSONL format:    {format_size(jsonl_size)}")
+    print(f"Parquet format:  {format_size(parquet_size)}")
+    
+    if jsonl_size > 0 and parquet_size > 0:
+        reduction = (jsonl_size - parquet_size) / jsonl_size * 100
+        compression_ratio = jsonl_size / parquet_size
+        space_saved = jsonl_size - parquet_size
+        
+        print(f"\nSpace Savings:")
+        print(f"• {reduction:.1f}% reduction in file size")
+        print(f"• {compression_ratio:.1f}x compression ratio")
+        print(f"• {format_size(space_saved)} space saved")
+        
+        print(f"\nBenefits of Parquet format:")
+        print(f"• Columnar storage ideal for embeddings and numerical data")
+        print(f"• Built-in compression (using snappy by default)")
+        print(f"• Faster loading for analytical workloads")
+        print(f"• Self-describing schema")
+        print(f"• Compatible with data science tools (pandas, polars, etc.)")
+    
+    print(f"\nTo use Parquet checkpoints in your code:")
+    print(f"```python")
+    print(f"from kura import ParquetCheckpointManager")
+    print(f"")
+    print(f"# Create Parquet checkpoint manager")
+    print(f"checkpoint_manager = ParquetCheckpointManager('./checkpoints', enabled=True)")
+    print(f"")
+    print(f"# Use in pipeline functions")
+    print(f"summaries = await summarise_conversations(")
+    print(f"    conversations, model=summary_model, checkpoint_manager=checkpoint_manager")
+    print(f")")
+    print(f"```")
+
+else:
+    show_section_header("Parquet Format (Not Available)")
+    print("PyArrow is not installed. To use Parquet checkpoints, install it with:")
+    print("pip install pyarrow")
+    print("\nParquet format offers:")
+    print("• Significant file size reduction (typically 50-80% smaller)")
+    print("• Faster loading for large datasets")
+    print("• Better compression for numerical data like embeddings")
+    print("• Compatibility with data science ecosystem")
