@@ -210,7 +210,8 @@ def get_checkpoint_params(manager_name: str, filename: str, data: List, model_cl
         checkpoint_type = type_map.get(model_class, "unknown")
 
         return {
-            "save_params": (filename, data, checkpoint_type),
+            "save_params": (filename, data),
+            "save_kwargs": {"checkpoint_type": checkpoint_type},
             "load_params": (filename, model_class),
             "load_kwargs": {"checkpoint_type": checkpoint_type},
         }
@@ -313,7 +314,8 @@ class TestCheckpointManagerUnified:
             )
 
             # Save should do nothing
-            manager.save_checkpoint(*params["save_params"])
+            save_kwargs = params.get("save_kwargs", {})
+            manager.save_checkpoint(*params["save_params"], **save_kwargs)
 
             # Load should return None
             loaded = manager.load_checkpoint(
@@ -333,7 +335,8 @@ class TestCheckpointManagerUnified:
             )
 
             # Save and load
-            manager.save_checkpoint(*params["save_params"])
+            save_kwargs = params.get("save_kwargs", {})
+            manager.save_checkpoint(*params["save_params"], **save_kwargs)
             loaded = manager.load_checkpoint(
                 *params["load_params"], **params["load_kwargs"]
             )

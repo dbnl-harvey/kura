@@ -614,11 +614,7 @@ class HFDatasetCheckpointManager:
             return None
 
     def filter_checkpoint(
-        self,
-        filename: str,
-        filter_fn: callable,
-        model_class: type[T],
-        checkpoint_type: str = "",
+        self, filename: str, filter_fn: callable, model_class: type[T], **kwargs
     ) -> Optional[List[T]]:
         """Filter a checkpoint dataset without loading everything into memory.
 
@@ -626,13 +622,17 @@ class HFDatasetCheckpointManager:
             filename: Name of the checkpoint
             filter_fn: Function to filter rows (takes dict, returns bool)
             model_class: Pydantic model class for results
-            checkpoint_type: Type of checkpoint for proper deserialization
+            **kwargs: Additional arguments, including:
+                checkpoint_type: Type of checkpoint for proper deserialization
 
         Returns:
             List of filtered model instances
         """
         if not self.enabled:
             return None
+
+        # Get checkpoint_type from kwargs or infer
+        checkpoint_type = kwargs.get("checkpoint_type", "")
 
         checkpoint_path = self._get_checkpoint_path(filename)
         if not checkpoint_path.exists():
