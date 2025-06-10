@@ -15,7 +15,6 @@ advanced features like streaming, versioning, and cloud storage integration.
 
 from .jsonl import JSONLCheckpointManager
 from .hf_dataset import HFDatasetCheckpointManager
-from .migration import migrate_jsonl_to_hf_dataset
 
 # Import ParquetCheckpointManager if PyArrow is available
 try:
@@ -29,7 +28,6 @@ except ImportError:
 __all__ = [
     "JSONLCheckpointManager",
     "HFDatasetCheckpointManager",
-    "migrate_jsonl_to_hf_dataset",
 ]
 
 # Add ParquetCheckpointManager to exports if available
