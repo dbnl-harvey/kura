@@ -108,88 +108,172 @@ The cluster name should be a sentence in the imperative that captures the user's
 
 ---
 
-## Clustering Methods: K-Means vs HDBSCAN
+## Clustering Algorithms
 
-While K-means clustering is the default method in Kura, **HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise)** often provides superior results for conversation clustering tasks. Understanding when and why to use each method can significantly improve your clustering outcomes.
+Kura supports multiple clustering algorithms through the `BaseClusteringMethod` interface. Each algorithm has different characteristics and is suitable for different use cases.
 
-### Why HDBSCAN is Often Better for Conversations
+### Standard K-means (`KmeansClusteringMethod`)
 
-**1. Natural Cluster Discovery**
-- **K-means** in Kura calculates the number of clusters based on a target group size (conversations per cluster), which may not reflect natural topic boundaries
-- **HDBSCAN** automatically discovers the optimal number of clusters based on data density, making it ideal for exploratory analysis
+The default clustering method uses scikit-learn's standard K-means algorithm. This approach loads all embeddings into memory and computes centroids using the full dataset.
 
-**2. Handles Varying Cluster Densities**
-- **K-means** assumes clusters are spherical and roughly equal in size, which rarely matches real conversation patterns
-- **HDBSCAN** can find clusters of different shapes and densities, better reflecting how conversational topics naturally group
+**Best for:**
+- Small to medium datasets (< 50k conversations)
+- When clustering accuracy is critical
+- Reproducible results (deterministic with fixed random seed)
+- Development and testing scenarios
 
-**3. Automatic Noise Detection**
-- **K-means** forces every conversation into a cluster, even outliers and noise
-- **HDBSCAN** identifies and separates outlier conversations that don't belong to any clear topic, improving cluster quality
+**Characteristics:**
+- **Memory usage:** High - loads entire embedding matrix into memory
+- **Speed:** Moderate - full batch processing
+- **Accuracy:** High - uses complete dataset for centroid calculation
+- **Deterministic:** Yes - same results with same random seed
 
-**4. Hierarchical Structure**
-- **K-means** produces flat clusters only
-- **HDBSCAN** naturally creates a hierarchical tree of clusters, showing how topics relate and can be subdivided
-
-### When to Use Each Method
-
-| Scenario | Recommended Method | Reason |
-|----------|-------------------|---------|
-| **Exploratory Analysis** | HDBSCAN | Don't know how many topics exist |
-| **Target Group Size** | K-means | When you want roughly equal-sized clusters |
-| **Mixed Topic Densities** | HDBSCAN | Some topics are common, others rare |
-| **Noise/Outlier Handling** | HDBSCAN | Want to identify conversations that don't fit clear patterns |
-| **Large Datasets** | HDBSCAN | Better scalability for high-dimensional embedding spaces |
-| **Hierarchical Analysis** | HDBSCAN | Need to understand topic relationships and sub-topics |
-
-### Using HDBSCAN in Kura
-
-To use HDBSCAN instead of K-means, initialize your `ClusterModel` with the `HDBSCANClusteringMethod`:
-
+**Example usage:**
 ```python
-from kura.hdbscan import HDBSCANClusteringMethod
-from kura.cluster import ClusterModel
+from kura import ClusterModel, KmeansClusteringMethod
 
-# Configure HDBSCAN clustering
-hdbscan_clustering = HDBSCANClusteringMethod(
-    min_cluster_size=10,              # Minimum conversations per cluster
-    min_samples=5,                    # Minimum samples for core points
-    cluster_selection_epsilon=0.0,    # Distance threshold for merging
-    cluster_selection_method="eom",   # Excess of Mass method
-    metric="euclidean"                # Distance metric for embeddings
-)
-
-# Create cluster model with HDBSCAN
-cluster_model = ClusterModel(
-    clustering_method=hdbscan_clustering,
-    embedding_model=OpenAIEmbeddingModel(),
-    max_concurrent_requests=50,
-    model="openai/gpt-4o-mini",
+model = ClusterModel(
+    clustering_method=KmeansClusteringMethod(clusters_per_group=10)
 )
 ```
 
-### Key HDBSCAN Parameters
+### MiniBatch K-means (`MiniBatchKmeansClusteringMethod`)
 
-- **`min_cluster_size`**: Minimum number of conversations required to form a cluster. Larger values create fewer, more substantial clusters
-- **`min_samples`**: Number of conversations in a neighborhood for a point to be considered a core point. Lower values allow more fine-grained clustering
-- **`cluster_selection_method`**:
-  - `"eom"` (Excess of Mass): Better for finding clusters of varying densities
-  - `"leaf"`: Better when you want many small, tight clusters
-- **`metric`**: Distance measure for embeddings. `"euclidean"` works well for normalized text embeddings
+Optimized for large datasets, MiniBatch K-means processes data in small batches rather than loading everything into memory at once. This algorithm addresses the scalability bottlenecks identified in [Issue #92](https://github.com/567-labs/kura/issues/92).
 
-### Example Results Comparison
+**Best for:**
+- Large datasets (100k+ conversations)
+- Memory-constrained environments
+- Production deployments with limited resources
+- When clustering speed is more important than perfect accuracy
 
-For a dataset of 500 customer support conversations:
+**Characteristics:**
+- **Memory usage:** Low - processes data in configurable batch sizes
+- **Speed:** Fast - incremental updates with early convergence
+- **Accuracy:** Good - slightly less accurate due to stochastic nature
+- **Deterministic:** No - results may vary between runs
 
-**K-means (k=10)**:
-- Forces exactly 10 clusters
-- May group unrelated edge cases together
-- Equal-sized clusters regardless of actual topic frequency
+**Configuration parameters:**
+- `clusters_per_group`: Target items per cluster (default: 10)
+- `batch_size`: Mini-batch size for processing (default: 1000)
+- `max_iter`: Maximum iterations (default: 100)
+- `random_state`: Random seed for reproducibility (default: 42)
 
-**HDBSCAN (min_cluster_size=15)**:
-- Discovers 8 meaningful clusters automatically
-- Identifies 23 outlier conversations as noise
-- Clusters vary in size based on topic popularity
-- Shows how "billing issues" splits into "payment failures" and "invoice questions"
+**Example usage:**
+```python
+from kura import ClusterModel, MiniBatchKmeansClusteringMethod
+
+# For large datasets
+model = ClusterModel(
+    clustering_method=MiniBatchKmeansClusteringMethod(
+        clusters_per_group=15,
+        batch_size=2000,  # Larger batches for better stability
+        max_iter=150,
+        random_state=42
+    )
+)
+```
+
+### HDBSCAN (`HDBSCANClusteringMethod`)
+
+HDBSCAN (Hierarchical Density-Based Spatial Clustering of Applications with Noise) often provides superior results for conversation clustering tasks, especially when you don't know the optimal number of clusters in advance.
+
+**Best for:**
+- Exploratory analysis when you don't know how many topics exist
+- Datasets with varying cluster densities (common and rare topics)
+- Automatic noise and outlier detection
+- When you need hierarchical cluster relationships
+- Large datasets with high-dimensional embeddings
+
+**Characteristics:**
+- **Memory usage:** Moderate - more efficient than standard K-means
+- **Speed:** Fast - good scalability for large datasets
+- **Accuracy:** High - discovers natural cluster boundaries
+- **Deterministic:** Yes - consistent results with same parameters
+
+**Key advantages:**
+- **Natural cluster discovery:** Automatically finds optimal number of clusters
+- **Handles varying densities:** Can find clusters of different shapes and sizes
+- **Noise detection:** Identifies outlier conversations that don't fit clear patterns
+- **Hierarchical structure:** Creates tree of clusters showing topic relationships
+
+**Configuration parameters:**
+- `min_cluster_size`: Minimum conversations per cluster (default: 5)
+- `min_samples`: Minimum samples for core points (default: 3)
+- `cluster_selection_epsilon`: Distance threshold for merging (default: 0.0)
+- `cluster_selection_method`: "eom" (Excess of Mass) or "leaf" (default: "eom")
+- `metric`: Distance measure for embeddings (default: "euclidean")
+
+**Example usage:**
+```python
+from kura import ClusterModel, HDBSCANClusteringMethod
+
+# For exploratory analysis with automatic cluster discovery
+model = ClusterModel(
+    clustering_method=HDBSCANClusteringMethod(
+        min_cluster_size=10,              # Minimum conversations per cluster
+        min_samples=5,                    # Minimum samples for core points
+        cluster_selection_epsilon=0.0,    # Distance threshold for merging
+        cluster_selection_method="eom",   # Excess of Mass method
+        metric="euclidean"                # Distance metric for embeddings
+    )
+)
+```
+
+### Algorithm Comparison
+
+| Feature | K-means | MiniBatch K-means | HDBSCAN |
+|---------|---------|-------------------|---------|
+| **Dataset Size** | < 50k conversations | 100k+ conversations | Any size |
+| **Memory Usage** | High (full matrix) | Low (batch-wise) | Moderate |
+| **Processing Speed** | Moderate | Fast | Fast |
+| **Clustering Quality** | High | Good | High |
+| **Reproducibility** | Deterministic | Stochastic | Deterministic |
+| **Cluster Count** | Fixed (calculated) | Fixed (calculated) | Automatic |
+| **Noise Handling** | Forces all into clusters | Forces all into clusters | Identifies outliers |
+| **Use Case** | Development, fixed groups | Production, large-scale | Exploratory, natural discovery |
+
+### Memory Usage Comparison
+
+For a dataset with 100,000 conversations using OpenAI embeddings (1536 dimensions):
+
+- **Standard K-means:** ~1.2GB for embedding matrix alone
+- **MiniBatch K-means:** ~12MB peak usage (with batch_size=1000)
+- **HDBSCAN:** ~600MB for embedding matrix and cluster tree
+
+### When to Use Each Algorithm
+
+**Choose K-means when:**
+- You want consistent, equal-sized clusters
+- Dataset is small to medium (< 50k conversations)
+- You need deterministic, reproducible results
+- Working in development/testing environments
+
+**Choose MiniBatch K-means when:**
+- Experiencing memory issues with standard K-means
+- Processing very large datasets (100k+ conversations)
+- Speed is more important than perfect accuracy
+- Working in resource-constrained production environments
+
+**Choose HDBSCAN when:**
+- You don't know how many clusters should exist
+- Topics have naturally varying frequencies
+- You want to identify and separate noise/outliers
+- You need hierarchical relationships between clusters
+- Doing exploratory analysis of conversation patterns
+
+### Custom Clustering Methods
+
+You can implement custom clustering algorithms by extending `BaseClusteringMethod`:
+
+```python
+from kura.base_classes import BaseClusteringMethod
+
+class CustomClusteringMethod(BaseClusteringMethod):
+    def cluster(self, items: list[dict]) -> dict[int, list]:
+        # Your clustering implementation
+        pass
+```
 
 ---
 

@@ -29,12 +29,6 @@ with timer("Importing kura modules"):
     )
 
     # Import visualization functions
-    from kura.visualization import (
-        visualise_clusters_enhanced,
-        visualise_clusters_rich,
-        visualise_from_checkpoint_manager,
-        visualise_pipeline_results,
-    )
 
     # Import existing Kura models and types
     from kura.types import Conversation
@@ -43,8 +37,8 @@ with timer("Importing kura modules"):
     from kura.meta_cluster import MetaClusterModel
     from kura.dimensionality import HDBUMAP
 
-    # Import new HDBSCAN clustering method
-    from kura.hdbscan import HDBSCANClusteringMethod
+    # Import MiniBatch KMeans clustering method
+    from kura.k_means import MiniBatchKmeansClusteringMethod
 
     from rich.console import Console
 
@@ -53,18 +47,18 @@ with timer("Importing kura modules"):
 console = Console()
 summary_model = SummaryModel(console=console)
 
-# Initialize HDBSCAN clustering method with appropriate parameters
-hdbscan_clustering = HDBSCANClusteringMethod(
-    min_cluster_size=5,  # Minimum cluster size for HDBSCAN
-    min_samples=3,  # Minimum samples for core points
-    cluster_selection_epsilon=0.0,  # Distance threshold for merging clusters
-    cluster_selection_method="eom",  # Excess of Mass method
-    metric="euclidean",  # Use euclidean distance (works well for normalized embeddings)
+# Initialize MiniBatch KMeans clustering method with appropriate parameters
+minibatch_kmeans_clustering = MiniBatchKmeansClusteringMethod(
+    clusters_per_group=10,  # Target items per cluster
+    batch_size=1000,  # Mini-batch size for processing
+    max_iter=100,  # Maximum iterations
+    random_state=42,  # Random seed for reproducibility
 )
 
-# Use HDBSCAN clustering method in ClusterModel
-cluster_model = ClusterModel(clustering_method=hdbscan_clustering, console=console)
-
+# Use MiniBatch KMeans clustering method in ClusterModel
+cluster_model = ClusterModel(
+    clustering_method=minibatch_kmeans_clustering, console=console
+)
 meta_cluster_model = MetaClusterModel(console=console)
 dimensionality_model = HDBUMAP()
 
@@ -122,13 +116,13 @@ for i, msg in enumerate(sample_conversation.messages[:3]):
 print()
 
 # Processing section
-show_section_header("Conversation Processing with HDBSCAN")
+show_section_header("Conversation Processing with MiniBatch KMeans")
 
-print("Starting conversation clustering with HDBSCAN...")
+print("Starting conversation clustering with MiniBatch KMeans...")
 
 
 async def process_with_progress():
-    """Process conversations step by step using the procedural API with HDBSCAN clustering."""
+    """Process conversations step by step using the procedural API with MiniBatch KMeans clustering."""
     print("Step 1: Generating conversation summaries...")
     with timer("Conversation summarization"):
         summaries = await summarise_conversations(
@@ -136,12 +130,12 @@ async def process_with_progress():
         )
     print(f"Generated {len(summaries)} summaries")
 
-    print("Step 2: Generating base clusters from summaries using HDBSCAN...")
-    with timer("HDBSCAN clustering"):
+    print("Step 2: Generating base clusters from summaries using MiniBatch KMeans...")
+    with timer("MiniBatch KMeans clustering"):
         clusters = await generate_base_clusters_from_conversation_summaries(
             summaries, model=cluster_model, checkpoint_manager=checkpoint_manager
         )
-    print(f"Generated {len(clusters)} base clusters using HDBSCAN")
+    print(f"Generated {len(clusters)} base clusters using MiniBatch KMeans")
 
     print("Step 3: Reducing clusters hierarchically...")
     with timer("Meta clustering"):
@@ -163,83 +157,3 @@ async def process_with_progress():
 
 
 reduced_clusters, projected_clusters = asyncio.run(process_with_progress())
-
-print(f"\nPipeline complete! Generated {len(projected_clusters)} projected clusters!\n")
-
-print("Processing Summary:")
-print(f"  • Input conversations: {len(conversations)}")
-print(f"  • Final reduced clusters: {len(reduced_clusters)}")
-print(f"  • Final projected clusters: {len(projected_clusters)}")
-print(f"  • Checkpoints saved to: {checkpoint_manager.checkpoint_dir}")
-print()
-
-print("=" * 80)
-print("VISUALIZATION DEMONSTRATION")
-print("=" * 80)
-
-print("\n1. Basic cluster visualization (from checkpoint):")
-print("-" * 50)
-with timer("Basic visualization"):
-    visualise_from_checkpoint_manager(
-        checkpoint_manager, meta_cluster_model, style="basic"
-    )
-
-print("\n2. Enhanced cluster visualization (from pipeline results):")
-print("-" * 50)
-with timer("Enhanced visualization"):
-    visualise_pipeline_results(reduced_clusters, style="enhanced")
-
-print("\n3. Rich cluster visualization (with console integration):")
-print("-" * 50)
-with timer("Rich visualization"):
-    visualise_clusters_rich(reduced_clusters, console=console)
-
-print("\n4. Direct checkpoint path visualization:")
-print("-" * 50)
-checkpoint_path = checkpoint_manager.get_checkpoint_path(
-    meta_cluster_model.checkpoint_filename
-)
-print(f"Loading from: {checkpoint_path}")
-with timer("Direct checkpoint visualization"):
-    visualise_clusters_enhanced(checkpoint_path=checkpoint_path)
-
-print("=" * 80)
-print("✨ TUTORIAL COMPLETE!")
-print("=" * 80)
-
-print("Procedural API Benefits Demonstrated:")
-print("  ✅ Step-by-step processing with individual control")
-print("  ✅ Flexible checkpoint management")
-print("  • Clear separation of concerns")
-print("  • Easy to customize individual steps")
-print("  • Multiple visualization options")
-print()
-
-print("HDBSCAN Clustering Features Demonstrated:")
-print("  • Density-based clustering for natural groupings")
-print("  • Automatic noise detection and outlier handling")
-print("  • No need to specify number of clusters in advance")
-print("  • Better handling of clusters with varying densities")
-print("  • Hierarchical cluster tree structure")
-print()
-
-print("Visualization Features Demonstrated:")
-print("  • Basic hierarchical tree view")
-print("  • Enhanced view with statistics and progress bars")
-print("  • Rich-formatted output with colors and tables")
-print("  • Direct checkpoint integration")
-print("  • Pipeline result visualization")
-print()
-
-print("CheckpointManager Integration:")
-print("  • Automatic checkpoint loading and saving")
-print("  • Seamless integration with visualization functions")
-print("  • Resume processing from any checkpoint")
-print("  • Visualize results without re-running pipeline")
-print()
-
-print(f"Check '{checkpoint_manager.checkpoint_dir}' for saved intermediate results!")
-print(
-    "Try different HDBSCAN parameters by modifying the HDBSCANClusteringMethod initialization!"
-)
-print("Customize visualization by passing different clusters or checkpoint paths!")
