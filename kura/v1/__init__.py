@@ -18,6 +18,14 @@ from .kura import (
     CheckpointFormat,
 )
 
+# Import ParquetCheckpointManager if pyarrow is available
+try:
+    from .parquet_checkpoint import ParquetCheckpointManager
+    PARQUET_AVAILABLE = True
+except ImportError:
+    ParquetCheckpointManager = None
+    PARQUET_AVAILABLE = False
+
 __all__ = [
     # Core functions
     "summarise_conversations",
@@ -30,5 +38,9 @@ __all__ = [
     "create_hf_checkpoint_manager",
     "CheckpointFormat",
 ]
+
+# Add ParquetCheckpointManager to __all__ if available
+if PARQUET_AVAILABLE:
+    __all__.append("ParquetCheckpointManager")
 
 __version__ = "1.0.0"
