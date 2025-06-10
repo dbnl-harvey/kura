@@ -30,7 +30,6 @@ with timer("Importing kura modules"):
 
     # Import visualization functions
     from kura.visualization import (
-        visualise_clusters_enhanced,
         visualise_clusters_rich,
         visualise_from_checkpoint_manager,
         visualise_pipeline_results,
@@ -43,13 +42,28 @@ with timer("Importing kura modules"):
     from kura.meta_cluster import MetaClusterModel
     from kura.dimensionality import HDBUMAP
 
+    # Import MiniBatch KMeans clustering method
+    from kura.k_means import MiniBatchKmeansClusteringMethod
+
     from rich.console import Console
 
 
 # Set up individual models
 console = Console()
 summary_model = SummaryModel(console=console)
-cluster_model = ClusterModel(console=console)
+
+# Initialize MiniBatch KMeans clustering method with appropriate parameters
+minibatch_kmeans_clustering = MiniBatchKmeansClusteringMethod(
+    clusters_per_group=10,  # Target items per cluster
+    batch_size=1000,  # Mini-batch size for processing
+    max_iter=100,  # Maximum iterations
+    random_state=42,  # Random seed for reproducibility
+)
+
+# Use MiniBatch KMeans clustering method in ClusterModel
+cluster_model = ClusterModel(
+    clustering_method=minibatch_kmeans_clustering, console=console
+)
 meta_cluster_model = MetaClusterModel(console=console)
 dimensionality_model = HDBUMAP()
 
@@ -107,9 +121,9 @@ for i, msg in enumerate(sample_conversation.messages[:3]):
 print()
 
 # Processing section
-show_section_header("Conversation Processing")
+show_section_header("Conversation Processing with MiniBatch KMeans")
 
-print("Starting conversation clustering...")
+print("Starting conversation clustering with MiniBatch KMeans...")
 
 
 async def process_with_progress():
@@ -121,12 +135,12 @@ async def process_with_progress():
         )
     print(f"Generated {len(summaries)} summaries")
 
-    print("Step 2: Generating base clusters from summaries...")
-    with timer("Base clustering"):
+    print("Step 2: Generating base clusters from summaries using MiniBatch KMeans...")
+    with timer("MiniBatch KMeans clustering"):
         clusters = await generate_base_clusters_from_conversation_summaries(
             summaries, model=cluster_model, checkpoint_manager=checkpoint_manager
         )
-    print(f"Generated {len(clusters)} base clusters")
+    print(f"Generated {len(clusters)} base clusters using MiniBatch KMeans")
 
     print("Step 3: Reducing clusters hierarchically...")
     with timer("Meta clustering"):
@@ -186,35 +200,10 @@ checkpoint_path = checkpoint_manager.get_checkpoint_path(
 )
 print(f"Loading from: {checkpoint_path}")
 with timer("Direct checkpoint visualization"):
-    visualise_clusters_enhanced(checkpoint_path=checkpoint_path)
+    visualise_from_checkpoint_manager(
+        checkpoint_manager, meta_cluster_model, style="enhanced"
+    )
 
 print("=" * 80)
 print("✨ TUTORIAL COMPLETE!")
 print("=" * 80)
-
-print("Procedural API Benefits Demonstrated:")
-print("  ✅ Step-by-step processing with individual control")
-print("  ✅ Flexible checkpoint management")
-print("  • Clear separation of concerns")
-print("  • Easy to customize individual steps")
-print("  • Multiple visualization options")
-print()
-
-print("Visualization Features Demonstrated:")
-print("  • Basic hierarchical tree view")
-print("  • Enhanced view with statistics and progress bars")
-print("  • Rich-formatted output with colors and tables")
-print("  • Direct checkpoint integration")
-print("  • Pipeline result visualization")
-print()
-
-print("CheckpointManager Integration:")
-print("  • Automatic checkpoint loading and saving")
-print("  • Seamless integration with visualization functions")
-print("  • Resume processing from any checkpoint")
-print("  • Visualize results without re-running pipeline")
-print()
-
-print(f"Check '{checkpoint_manager.checkpoint_dir}' for saved intermediate results!")
-print("Try different visualization styles by modifying the 'style' parameter!")
-print("Customize visualization by passing different clusters or checkpoint paths!")
