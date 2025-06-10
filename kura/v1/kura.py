@@ -13,7 +13,7 @@ Key benefits over the class-based approach:
 """
 
 import logging
-from typing import Optional, TypeVar, List
+from typing import Optional, TypeVar, List, Union, Literal
 import os
 from pydantic import BaseModel
 
@@ -27,10 +27,15 @@ from kura.base_classes import (
 from kura.types import Conversation, Cluster, ConversationSummary
 from kura.types.dimensionality import ProjectedCluster
 
+# Import checkpoint managers
+from kura.checkpoints import JSONLCheckpointManager, HFDatasetCheckpointManager
+
 # Set up logger
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+CheckpointFormat = Literal["jsonl", "hf-dataset"]
 
 
 # =============================================================================
@@ -39,29 +44,65 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class CheckpointManager:
-    """Handles checkpoint loading and saving for pipeline steps."""
+    """Unified checkpoint manager that supports multiple backend formats.
+    
+    This manager can use either JSONL files (legacy) or HuggingFace datasets (new)
+    for storing checkpoint data. It provides a consistent interface while allowing
+    users to choose the backend format based on their needs.
+    """
 
-    def __init__(self, checkpoint_dir: str, *, enabled: bool = True):
-        """Initialize checkpoint manager.
+    def __init__(
+        self, 
+        checkpoint_dir: str, 
+        *, 
+        enabled: bool = True,
+        format: CheckpointFormat = "jsonl",
+        # HuggingFace datasets specific options
+        hub_repo: Optional[str] = None,
+        hub_token: Optional[str] = None,
+        streaming: bool = False,
+        compression: Optional[str] = "gzip"
+    ):
+        """Initialize checkpoint manager with specified backend format.
 
         Args:
             checkpoint_dir: Directory for saving checkpoints
             enabled: Whether checkpointing is enabled
+            format: Checkpoint format to use ("jsonl" or "hf-dataset")
+            hub_repo: Optional HuggingFace Hub repository (HF datasets only)
+            hub_token: Optional HuggingFace Hub token (HF datasets only)
+            streaming: Whether to use streaming mode by default (HF datasets only)
+            compression: Compression algorithm (HF datasets only)
         """
         self.checkpoint_dir = checkpoint_dir
         self.enabled = enabled
-
-        if self.enabled:
-            self.setup_checkpoint_dir()
+        self.format = format
+        
+        # Initialize the appropriate backend
+        if format == "jsonl":
+            self._backend = JSONLCheckpointManager(checkpoint_dir, enabled=enabled)
+        elif format == "hf-dataset":
+            self._backend = HFDatasetCheckpointManager(
+                checkpoint_dir,
+                enabled=enabled,
+                hub_repo=hub_repo,
+                hub_token=hub_token,
+                streaming=streaming,
+                compression=compression
+            )
+        else:
+            raise ValueError(f"Unsupported checkpoint format: {format}")
+        
+        logger.info(f"Initialized {format} checkpoint manager at {checkpoint_dir}")
 
     def setup_checkpoint_dir(self) -> None:
         """Create checkpoint directory if it doesn't exist."""
-        if not os.path.exists(self.checkpoint_dir):
-            os.makedirs(self.checkpoint_dir)
-            logger.info(f"Created checkpoint directory: {self.checkpoint_dir}")
+        self._backend.setup_checkpoint_dir()
 
     def get_checkpoint_path(self, filename: str) -> str:
         """Get full path for a checkpoint file."""
+        if hasattr(self._backend, 'get_checkpoint_path'):
+            return self._backend.get_checkpoint_path(filename)
         return os.path.join(self.checkpoint_dir, filename)
 
     def load_checkpoint(self, filename: str, model_class: type[T]) -> Optional[List[T]]:
@@ -74,17 +115,25 @@ class CheckpointManager:
         Returns:
             List of model instances if checkpoint exists, None otherwise
         """
-        if not self.enabled:
-            return None
-
-        checkpoint_path = self.get_checkpoint_path(filename)
-        if os.path.exists(checkpoint_path):
-            logger.info(
-                f"Loading checkpoint from {checkpoint_path} for {model_class.__name__}"
+        if self.format == "hf-dataset":
+            # For HF datasets, we need to determine checkpoint type
+            checkpoint_type = ""
+            if model_class == Conversation:
+                checkpoint_type = "conversations"
+            elif model_class == ConversationSummary:
+                checkpoint_type = "summaries"
+            elif model_class == ProjectedCluster:
+                checkpoint_type = "projected_clusters"
+            elif model_class == Cluster:
+                checkpoint_type = "clusters"
+                
+            return self._backend.load_checkpoint(
+                filename, 
+                model_class, 
+                checkpoint_type=checkpoint_type
             )
-            with open(checkpoint_path, "r") as f:
-                return [model_class.model_validate_json(line) for line in f]
-        return None
+        else:
+            return self._backend.load_checkpoint(filename, model_class)
 
     def save_checkpoint(self, filename: str, data: List[T]) -> None:
         """Save data to a checkpoint file.
@@ -93,14 +142,136 @@ class CheckpointManager:
             filename: Name of the checkpoint file
             data: List of model instances to save
         """
-        if not self.enabled:
-            return
+        if self.format == "hf-dataset" and data:
+            # For HF datasets, we need to determine checkpoint type
+            model_class = type(data[0])
+            checkpoint_type = ""
+            if model_class == Conversation:
+                checkpoint_type = "conversations"
+            elif model_class == ConversationSummary:
+                checkpoint_type = "summaries"
+            elif model_class == ProjectedCluster:
+                checkpoint_type = "projected_clusters"
+            elif model_class == Cluster:
+                checkpoint_type = "clusters"
+                
+            return self._backend.save_checkpoint(filename, data, checkpoint_type)
+        else:
+            return self._backend.save_checkpoint(filename, data)
 
-        checkpoint_path = self.get_checkpoint_path(filename)
-        with open(checkpoint_path, "w") as f:
-            for item in data:
-                f.write(item.model_dump_json() + "\n")
-        logger.info(f"Saved checkpoint to {checkpoint_path} with {len(data)} items")
+    def list_checkpoints(self) -> List[str]:
+        """List all available checkpoints."""
+        return self._backend.list_checkpoints()
+
+    def delete_checkpoint(self, filename: str) -> bool:
+        """Delete a checkpoint.
+        
+        Args:
+            filename: Name of the checkpoint to delete
+            
+        Returns:
+            True if checkpoint was deleted, False if it didn't exist
+        """
+        return self._backend.delete_checkpoint(filename)
+
+    # Additional methods for HF datasets backend
+    def get_checkpoint_info(self, filename: str) -> Optional[dict]:
+        """Get information about a checkpoint (HF datasets only)."""
+        if self.format == "hf-dataset" and hasattr(self._backend, 'get_checkpoint_info'):
+            return self._backend.get_checkpoint_info(filename)
+        return None
+
+    def filter_checkpoint(self, filename: str, filter_fn: callable, model_class: type[T]) -> Optional[List[T]]:
+        """Filter a checkpoint without loading everything into memory (HF datasets only)."""
+        if self.format == "hf-dataset" and hasattr(self._backend, 'filter_checkpoint'):
+            checkpoint_type = ""
+            if model_class == Conversation:
+                checkpoint_type = "conversations"
+            elif model_class == ConversationSummary:
+                checkpoint_type = "summaries"
+            elif model_class == ProjectedCluster:
+                checkpoint_type = "projected_clusters"
+            elif model_class == Cluster:
+                checkpoint_type = "clusters"
+                
+            return self._backend.filter_checkpoint(filename, filter_fn, model_class, checkpoint_type)
+        return None
+
+
+# =============================================================================
+# Convenience Functions
+# =============================================================================
+
+
+def create_checkpoint_manager(
+    checkpoint_dir: str = "./checkpoints",
+    format: Optional[CheckpointFormat] = None,
+    **kwargs
+) -> CheckpointManager:
+    """Create a checkpoint manager with appropriate format.
+    
+    This function automatically chooses the checkpoint format based on:
+    1. Explicit format parameter
+    2. KURA_CHECKPOINT_FORMAT environment variable
+    3. Default to 'jsonl' for backward compatibility
+    
+    Args:
+        checkpoint_dir: Directory for checkpoints
+        format: Explicit format choice (overrides environment)
+        **kwargs: Additional arguments passed to checkpoint manager
+        
+    Returns:
+        Configured CheckpointManager instance
+    """
+    # Determine format
+    if format is None:
+        format = os.environ.get("KURA_CHECKPOINT_FORMAT", "jsonl")
+    
+    if format not in ["jsonl", "hf-dataset"]:
+        logger.warning(f"Unknown checkpoint format '{format}', defaulting to 'jsonl'")
+        format = "jsonl"
+    
+    return CheckpointManager(
+        checkpoint_dir=checkpoint_dir,
+        format=format,
+        **kwargs
+    )
+
+
+def create_hf_checkpoint_manager(
+    checkpoint_dir: str = "./checkpoints",
+    *,
+    hub_repo: Optional[str] = None,
+    hub_token: Optional[str] = None,
+    streaming: bool = False,
+    compression: Optional[str] = "gzip",
+    **kwargs
+) -> CheckpointManager:
+    """Create a HuggingFace datasets checkpoint manager.
+    
+    Convenience function for creating an HF datasets checkpoint manager
+    with commonly used settings.
+    
+    Args:
+        checkpoint_dir: Directory for checkpoints
+        hub_repo: HuggingFace Hub repository name
+        hub_token: HuggingFace Hub authentication token
+        streaming: Whether to use streaming mode by default
+        compression: Compression algorithm to use
+        **kwargs: Additional arguments
+        
+    Returns:
+        CheckpointManager configured for HF datasets
+    """
+    return CheckpointManager(
+        checkpoint_dir=checkpoint_dir,
+        format="hf-dataset",
+        hub_repo=hub_repo,
+        hub_token=hub_token,
+        streaming=streaming,
+        compression=compression,
+        **kwargs
+    )
 
 
 # =============================================================================

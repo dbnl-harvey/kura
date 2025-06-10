@@ -13,6 +13,9 @@ from .kura import (
     reduce_dimensionality_from_clusters,
     # Checkpoint management
     CheckpointManager,
+    create_checkpoint_manager,
+    create_hf_checkpoint_manager,
+    CheckpointFormat,
 )
 
 __all__ = [
@@ -23,6 +26,9 @@ __all__ = [
     "reduce_dimensionality_from_clusters",
     # Utilities
     "CheckpointManager",
+    "create_checkpoint_manager", 
+    "create_hf_checkpoint_manager",
+    "CheckpointFormat",
 ]
 
 __version__ = "1.0.0"
