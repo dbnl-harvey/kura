@@ -5,6 +5,8 @@ This module provides a ParquetCheckpointManager that stores checkpoint data
 in Parquet format for better compression and faster loading compared to JSONL.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import List, Optional, TypeVar, Dict, Any, Union
