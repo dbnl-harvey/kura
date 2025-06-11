@@ -1,9 +1,20 @@
-from .v1.kura import (
-    summarise_conversations,
+from .checkpoint import CheckpointManager
+from .summarisation import SummaryModel, summarise_conversations
+from .cluster import (
+    ClusterDescriptionModel,
     generate_base_clusters_from_conversation_summaries,
+    # reduce_clusters_from_base_clusters,
+    # reduce_dimensionality_from_clusters,
+)
+from .v1.kura import (
     reduce_clusters_from_base_clusters,
     reduce_dimensionality_from_clusters,
 )
+from .meta_cluster import MetaClusterModel
+
+from .types import Conversation
+from .k_means import KmeansClusteringMethod, MiniBatchKmeansClusteringMethod
+from .hdbscan import HDBSCANClusteringMethod
 
 # Import ParquetCheckpointManager from checkpoints module if available
 try:
@@ -22,21 +33,17 @@ except ImportError:
     HFDatasetCheckpointManager = None
     HF_AVAILABLE = False
 
-from .cluster import ClusterModel
-from .meta_cluster import MetaClusterModel
-from .summarisation import SummaryModel
-from .types import Conversation
-from .k_means import KmeansClusteringMethod, MiniBatchKmeansClusteringMethod
-from .hdbscan import HDBSCANClusteringMethod
 
 __all__ = [
-    "ClusterModel",
-    "MetaClusterModel",
     "SummaryModel",
+    "ClusterDescriptionModel",
     "Conversation",
+    "MetaClusterModel",
+    "CheckpointManager",
     "KmeansClusteringMethod",
     "MiniBatchKmeansClusteringMethod",
     "HDBSCANClusteringMethod",
+    # Procedural Methods
     "summarise_conversations",
     "generate_base_clusters_from_conversation_summaries",
     "reduce_clusters_from_base_clusters",
