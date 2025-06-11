@@ -23,7 +23,7 @@ class SummaryModel(BaseSummaryModel):
     @property
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
-        return "summaries.jsonl"
+        return "summaries"
 
     def __init__(
         self,
