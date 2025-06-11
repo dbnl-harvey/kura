@@ -54,7 +54,7 @@ class JSONLCheckpointManager(BaseCheckpointManager):
         if not self.enabled:
             return None
 
-        checkpoint_path = self.get_checkpoint_path(filename)
+        checkpoint_path = self.get_checkpoint_path(filename + ".jsonl")
         if checkpoint_path.exists():
             logger.info(
                 f"Loading checkpoint from {checkpoint_path} for {model_class.__name__}"
@@ -76,7 +76,7 @@ class JSONLCheckpointManager(BaseCheckpointManager):
         if not self.enabled:
             return
 
-        checkpoint_path = self.get_checkpoint_path(filename)
+        checkpoint_path = self.get_checkpoint_path(filename + ".jsonl")
         with open(checkpoint_path, "w") as f:
             for item in data:
                 f.write(item.model_dump_json() + "\n")

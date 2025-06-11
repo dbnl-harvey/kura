@@ -10,7 +10,11 @@ from kura import (
     reduce_dimensionality_from_clusters,
 )
 
-from kura.checkpoints import HFDatasetCheckpointManager
+from kura.checkpoints import (
+    HFDatasetCheckpointManager,
+    JSONLCheckpointManager,
+    ParquetCheckpointManager,
+)
 from kura.types import Conversation
 from kura.summarisation import SummaryModel
 from kura.k_means import MiniBatchKmeansClusteringMethod
@@ -65,7 +69,7 @@ def show_section_header(title):
 
 
 console = Console()
-summary_model = SummaryModel(console=console)
+summary_model = SummaryModel(console=console, max_concurrent_requests=100)
 CHECKPOINT_DIR = "./tutorial_checkpoints"
 
 minibatch_kmeans_clustering = MiniBatchKmeansClusteringMethod(
@@ -80,7 +84,7 @@ cluster_model = ClusterModel(
     metric="euclidean",
     console=console,
 )
-meta_cluster_model = MetaClusterModel(console=console)
+meta_cluster_model = MetaClusterModel(console=console, max_concurrent_requests=100)
 dimensionality_model = HDBUMAP()
 
 with timer_manager.timer("Loading sample conversations"):
@@ -112,9 +116,10 @@ checkpoint_manager = HFDatasetCheckpointManager(CHECKPOINT_DIR, enabled=True)
 
 
 async def process(checkpoint_manager: BaseCheckpointManager):
+    slug = f"{checkpoint_manager.__class__.__name__}"
     """Process conversations using checkpoints."""
     print("Step 1: Generating summaries with checkpoints...")
-    with timer_manager.timer("Summarization"):
+    with timer_manager.timer(f"{slug} - Summarization"):
         summaries = await summarise_conversations(
             conversations,
             model=summary_model,
@@ -123,7 +128,7 @@ async def process(checkpoint_manager: BaseCheckpointManager):
     print(f"Generated {len(summaries)} summaries using checkpoints")
 
     print("Step 2: Generating clusters with checkpoints...")
-    with timer_manager.timer("Clustering"):
+    with timer_manager.timer(f"{slug} - Clustering"):
         clusters = await generate_base_clusters_from_conversation_summaries(
             summaries,
             model=cluster_model,
@@ -132,7 +137,7 @@ async def process(checkpoint_manager: BaseCheckpointManager):
     print(f"Generated {len(clusters)} clusters using checkpoints")
 
     print("Step 3: Meta clustering with checkpoints...")
-    with timer_manager.timer("Meta clustering"):
+    with timer_manager.timer(f"{slug} - Meta clustering"):
         reduced_clusters = await reduce_clusters_from_base_clusters(
             clusters,
             model=meta_cluster_model,
@@ -141,19 +146,23 @@ async def process(checkpoint_manager: BaseCheckpointManager):
     print(f"Reduced to {len(reduced_clusters)} meta clusters using checkpoints")
 
     print("Step 4: Dimensionality reduction with checkpoints...")
-    with timer_manager.timer("Dimensionality reduction"):
+    with timer_manager.timer(f"{slug} - Dimensionality reduction"):
         projected_clusters = await reduce_dimensionality_from_clusters(
             reduced_clusters,
             model=dimensionality_model,
             checkpoint_manager=checkpoint_manager,
         )
-    print(
-        f"Generated {len(projected_clusters)} projected clusters using Parquet format"
-    )
+    print(f"Generated {len(projected_clusters)} projected clusters using {slug}")
 
     return reduced_clusters, projected_clusters
 
 
-asyncio.run(process(checkpoint_manager))
+for checkpoint_manager in [
+    HFDatasetCheckpointManager(f"{CHECKPOINT_DIR}/hf", enabled=True),
+    ParquetCheckpointManager(f"{CHECKPOINT_DIR}/parquet", enabled=True),
+    JSONLCheckpointManager(f"{CHECKPOINT_DIR}/jsonl", enabled=True),
+]:
+    print(f"Running with {type(checkpoint_manager).__name__}")
+    asyncio.run(process(checkpoint_manager))
 
 timer_manager.print_summary()

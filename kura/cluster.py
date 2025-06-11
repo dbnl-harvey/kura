@@ -21,7 +21,7 @@ class ClusterModel(BaseClusterModel):
     @property
     def checkpoint_filename(self) -> str:
         """The filename to use for checkpointing this model's output."""
-        return "clusters.jsonl"
+        return "clusters"
 
     def __init__(
         self,

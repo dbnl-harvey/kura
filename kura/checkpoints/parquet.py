@@ -23,9 +23,9 @@ try:
 except ImportError:
     PYARROW_AVAILABLE = False
 
-from kura.base_classes import BaseCheckpointManager
 from kura.types import Conversation, Cluster, ConversationSummary
 from kura.types.dimensionality import ProjectedCluster
+from kura.base_classes import BaseCheckpointManager
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,13 @@ class ParquetCheckpointManager(BaseCheckpointManager):
                 "Install with: pip install pyarrow"
             )
 
-        super().__init__(checkpoint_dir, enabled=enabled)
+        self.checkpoint_dir = Path(checkpoint_dir)
+        self.enabled = enabled
         self.compression = compression
         self.schemas = self._define_schemas()
+
+        if self.enabled:
+            self.setup_checkpoint_dir()
 
     def setup_checkpoint_dir(self) -> None:
         """Create checkpoint directory if it doesn't exist."""
@@ -124,9 +128,7 @@ class ParquetCheckpointManager(BaseCheckpointManager):
     def get_checkpoint_path(self, filename: str) -> Path:
         """Get full path for a checkpoint file, converting to .parquet extension."""
         # Convert .jsonl extensions to .parquet
-        if filename.endswith(".jsonl"):
-            filename = filename[:-6] + ".parquet"
-        elif not filename.endswith(".parquet"):
+        if not filename.endswith(".parquet"):
             filename = filename + ".parquet"
 
         return self.checkpoint_dir / filename
@@ -323,15 +325,12 @@ class ParquetCheckpointManager(BaseCheckpointManager):
         else:
             raise ValueError(f"Unknown model class: {model_class}")
 
-    def load_checkpoint(
-        self, filename: str, model_class: type[T], **kwargs
-    ) -> Optional[List[T]]:
+    def load_checkpoint(self, filename: str, model_class: type[T]) -> Optional[List[T]]:
         """Load data from a Parquet checkpoint file.
 
         Args:
             filename: Name of the checkpoint file
             model_class: Pydantic model class for deserializing the data
-            **kwargs: Additional arguments (unused in Parquet implementation)
 
         Returns:
             List of model instances if checkpoint exists, None otherwise
@@ -361,13 +360,12 @@ class ParquetCheckpointManager(BaseCheckpointManager):
             logger.error(f"Failed to load checkpoint from {checkpoint_path}: {e}")
             return None
 
-    def save_checkpoint(self, filename: str, data: List[T], **kwargs) -> None:
+    def save_checkpoint(self, filename: str, data: List[T]) -> None:
         """Save data to a Parquet checkpoint file.
 
         Args:
             filename: Name of the checkpoint file
             data: List of model instances to save
-            **kwargs: Additional arguments (unused in Parquet implementation)
         """
         if not self.enabled or not data:
             return
