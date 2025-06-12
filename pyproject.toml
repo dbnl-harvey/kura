@@ -23,6 +23,7 @@ dependencies = [
     "sqlmodel>=0.0.14",
     "datasets>=3.6.0",
     "pyarrow>=10.0.0",
+    "diskcache>=5.6.3",
 ]
 
 
