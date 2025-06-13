@@ -4,6 +4,8 @@
 - Always make pull requests for code changes
 - Never push directly to main branch
 - Create feature branches for new functionality
+- Make sure all files are properly completed before committing
+- Don't use `git add .` or `git add --all` - be selective about what you stage
 
 ## Writing Style
 - Write at a 9th-grade reading level, always
