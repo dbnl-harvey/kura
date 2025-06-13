@@ -66,13 +66,13 @@ conversations = Conversation.from_hf_dataset(
 )
 
 # Set up models
-summary_model = SummaryModel(cache_path="/cache/tmp/")
+summary_model = SummaryModel()
 cluster_model = ClusterModel()
 meta_cluster_model = MetaClusterModel(max_clusters=10)
 dimensionality_model = HDBUMAP()
 
 # Set up checkpoint manager
-checkpoint_mgr = CheckpointManager("./checkpoints", enabled=False)
+checkpoint_mgr = CheckpointManager("./checkpoints", enabled=True)
 
 # Run pipeline with explicit steps
 async def process_conversations():
