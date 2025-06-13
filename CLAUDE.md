@@ -106,7 +106,7 @@ Kura offers two APIs for different use cases:
 
 ### Core Components
 
-1. **Summarisation Model** (`kura/summarisation.py`): Takes user conversations and summarizes them into task descriptions
+1. **Summarisation Model** (`kura/summarisation.py`): Takes user conversations and summarizes them into task descriptions, with optional disk caching using `diskcache`
 2. **Embedding Model** (`kura/embedding.py`): Converts text into vector representations (embeddings)
 3. **Clustering Model** (`kura/cluster.py`): Groups summaries into clusters based on embeddings
 4. **Meta Clustering Model** (`kura/meta_cluster.py`): Further groups clusters into a hierarchical structure (Note: `max_clusters` parameter now lives here, not in the main Kura class)
@@ -125,7 +125,7 @@ Kura offers two APIs for different use cases:
 
 - `Kura` (`kura/kura.py`): Main class that orchestrates the entire pipeline
 - `BaseEmbeddingModel` / `OpenAIEmbeddingModel` (`kura/embedding.py`): Handle text embedding
-- `BaseSummaryModel` / `SummaryModel` (`kura/summarisation.py`): Summarize conversations
+- `BaseSummaryModel` / `SummaryModel` (`kura/summarisation.py`): Summarize conversations with optional disk caching
 - `BaseClusterModel` / `ClusterModel` (`kura/cluster.py`): Create initial clusters
 - `BaseMetaClusterModel` / `MetaClusterModel` (`kura/meta_cluster.py`): Reduce clusters into hierarchical groups
 - `BaseDimensionalityReduction` / `HDBUMAP` (`kura/dimensionality.py`): Reduce dimensions for visualization
