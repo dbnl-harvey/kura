@@ -100,25 +100,7 @@ nav:
       - Meta-Clustering: core-concepts/meta-clustering.md
       - Dimensionality Reduction: core-concepts/dimensionality-reduction.md
       - Checkpoints: core-concepts/checkpoints.md
-  - Examples:
-      - HuggingFace Datasets Checkpoints: examples/hf_datasets_checkpoints.md
-  - API Reference:
-      - Overview: api/index.md
-      # Future additions:
-      # - Procedural API: api/procedural.md
-      # - Class-based API: api/class-based.md
-      # - Model Interfaces: api/models.md
-  - Advanced Topics:
-      # - Custom Models: advanced/custom-models.md
-      # - LLM Extractors: advanced/llm-extractors.md
-      # - Performance Optimization: advanced/performance.md
-      - Checkpoint Migration: getting-started/quickstart.md#migration-guide-class-based-to-procedural-api
-  - Deployment:
-      - Web UI: getting-started/quickstart.md#web-server
-      # - Production Setup: deployment/production.md
-  - Resources:
-      - Blog: blog/index.md
-      - Contributing: https://github.com/567-labs/kura/blob/main/CONTRIBUTING.md
+  - Blog: blog/index.md
 
 plugins:
   - social
