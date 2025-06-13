@@ -150,7 +150,8 @@ class SummaryModel(BaseSummaryModel):
             tuple(message_data),
             response_schema.__name__,
             hashlib.md5(prompt.encode()).hexdigest(),
-            temperature
+            temperature,
+            self.model
         )
         
         return hashlib.md5(str(cache_components).encode()).hexdigest()
