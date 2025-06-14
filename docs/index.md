@@ -16,36 +16,13 @@ Kura is an open-source library for understanding chat data through machine learn
 ## The Hidden Cost of Not Understanding Your Users
 
 Every day, your AI assistant or chatbot has thousands of conversations. Within this data lies critical intelligence:
-- **80% of support tickets** might stem from the same 5 unclear features
-- **Key feature requests** repeated by hundreds of users in different ways
-- **Revenue opportunities** from unmet needs you didn't know existed
-- **Critical failures** affecting user trust that go unreported
 
-### What Kura Does
+- **80% of support tickets** stem from 5 unclear features
+- **Feature requests** repeated by hundreds of users differently
+- **Revenue opportunities** from unmet needs
+- **Critical failures** affecting user trust
 
-Kura transforms unstructured conversation data into structured insights:
-
-```
-10,000 conversations → AI Analysis → 20 clear patterns
-```
-
-- **Automatic Intent Discovery**: Find what users actually want (not what they say)
-- **Failure Pattern Detection**: Identify where your AI falls short before users complain
-- **Feature Priority Insights**: See which missing features impact the most users
-- **Semantic Clustering**: Group by meaning, not keywords
-- **Privacy-First Design**: Analyze patterns without exposing individual conversations
-
-## Key Features
-
-- **Smart Summarization**: Convert conversations into concise task descriptions (with caching!)
-- **Hierarchical Clustering**: Multi-level grouping for easy navigation
-- **Metadata Extraction**: Automatic extraction of language, sentiment, topics
-- **Fully Extensible**: Bring your own models (OpenAI, Anthropic, local)
-- **Checkpoint System**: Never lose progress with automatic saves
-- **Performance Optimized**: MiniBatch clustering, parallel processing, smart caching
-- **Web UI**: Interactive visualization of your clusters
-
-## Installation
+Make sense of that data with Kura today
 
 ```bash
 # Install from PyPI
@@ -54,6 +31,47 @@ pip install kura
 # Or use uv for faster installation
 uv pip install kura
 ```
+
+### What Kura Does
+
+!!! note "Kura transforms chaos into clarity"
+
+    Imagine having 10,000 scattered conversations and ending up with 20 crystal-clear patterns that tell you exactly what your users need. That's what Kura does.
+
+Kura is built for scale and flexibility, processing your conversation data through a sophisticated four-stage pipeline.
+
+1. **Smart caching** makes re-runs 85x faster
+2. **Checkpointing system** never loses progress
+3. **Parallel processing** handles thousands of conversations,
+4. **Extensible design** works with any model (OpenAI, Anthropic, local)
+
+We also provide a web-ui that ships with the package to visualise the different clusters that we've extracted.
+
+#### **Summarization**
+
+Extract core intent from each conversation. Works with any conversation length - from quick questions to complex multi-turn dialogues. Uses AI to distill the essence while preserving critical context and user intent.
+
+Transforms: _"I've been trying to cancel my subscription for 30 minutes and the button doesn't work and I'm really frustrated..."_ **→** _"Cancel subscription"_
+
+#### **Semantic Clustering**
+
+Group by meaning, not keywords. The AI understands synonyms, context, and user intent across different phrasings and languages.
+
+Transforms: _"cancel subscription"_, _"stop my account"_, _"end my service"_, _"how do I delete my profile?"_, _"terminate my membership"_ **→** _Single cluster: "Account Cancellation"_
+
+#### **Meta-Clustering**
+
+Build hierarchy of insights. Creates multiple levels of organization: individual issues → feature categories → business themes.
+
+Transforms: _"Account Cancellation"_, _"Login Problems"_, _"Password Resets"_ **→** _"Account Management Issues" (40% of support load)_
+
+#### **Dimensionality Reduction**
+
+Create interactive exploration maps. See clusters as bubbles on a 2D map where proximity indicates similarity. Discover edge cases, identify emerging trends, and spot conversations that don't fit existing patterns.
+
+Transforms: _High-dimensional cluster embeddings_ **→** _Interactive 2D visualization map_
+
+**The result?** Instead of drowning in individual conversations, you get a clear picture of what's actually happening across your entire user base.
 
 ## Quick Start
 
@@ -141,229 +159,29 @@ Programming Assistance Clusters (190 conversations)
 Performance: 21.9s first run → 2.1s with cache (10x faster!)
 ```
 
-## Performance Features
-
-### Smart Caching (New in v0.3.0+)
-
-Kura now includes intelligent caching for expensive operations:
-
-```python
-# Enable caching for 85x faster development iterations
-summary_model = SummaryModel(
-    enable_caching=True,
-    cache_dir="./.kura_cache",
-    cache_ttl_days=7,  # Auto-expire old entries
-)
-
-# Cache automatically handles:
-# - Content-based deduplication
-# - Thread-safe operations
-# - Automatic cleanup
-# - Cross-session persistence
-```
-
-### Parallel Processing
-
-```python
-# Process multiple conversations simultaneously
-summary_model = SummaryModel(
-    max_concurrent_requests=100,  # Parallel API calls
-    enable_caching=True,
-)
-```
-
-### MiniBatch Clustering
-
-```python
-# Handle large datasets efficiently
-from kura.k_means import MiniBatchKmeansClusteringMethod
-
-clustering = MiniBatchKmeansClusteringMethod(
-    batch_size=1000,  # Process in chunks
-    clusters_per_group=10,
-)
-```
-
 ## Documentation
 
-### Getting Started
+**Installation**: [Get started](getting-started/installation.md) with Kura today. Install via pip or uv and configure your first analysis pipeline.
 
-- [Installation Guide](getting-started/installation.md)
-- [Quickstart](getting-started/quickstart.md)
+**Quickstart**: [Jump right in](getting-started/quickstart.md) with a complete example that processes conversations from raw data to insights in minutes.
 
-### Core Concepts
+**Complete Workflow**: [See how a full analysis looks](./getting-started/tutorial.md) from loading data to interpreting clusters and extracting actionable insights.
 
-- [Conversations](core-concepts/conversations.md)
-- [Embedding](core-concepts/embedding.md)
-- [Clustering](core-concepts/clustering.md)
-- [Summarization](core-concepts/summarization.md)
-- [Meta-Clustering](core-concepts/meta-clustering.md)
-- [Dimensionality Reduction](core-concepts/dimensionality-reduction.md)
+**Core Concepts**: Learn how Kura works under the hood - from [conversation loading](core-concepts/conversations.md) and [embedding](core-concepts/embedding.md) to [clustering](core-concepts/clustering.md), [summarization](core-concepts/summarization.md), [meta-clustering](core-concepts/meta-clustering.md), and [dimensionality reduction](core-concepts/dimensionality-reduction.md).
 
-### API Reference
-
-- [Procedural API Documentation](api/index.md)
-
-## Migration Guide: Class-based to Procedural API
-
-### Why Migrate?
-
-The procedural API (v1) offers:
-- **Better control**: Execute only the steps you need
-- **Easier testing**: Test individual pipeline stages
-- **More flexibility**: Mix and match different model providers
-- **Clearer flow**: Explicit inputs and outputs
-
-### Key Differences
-
-| Class-based API | Procedural API |
-|----------------|----------------|
-| Single Kura class | Separate functions |
-| Hidden state | Explicit parameters |
-| All-or-nothing execution | Step-by-step control |
-| Fixed pipeline | Composable functions |
-
-### Migration Examples
-
-#### Before (Class-based):
-```python
-from kura import Kura
-
-kura_instance = Kura(
-    conversations=conversations,
-    n_clusters=10,
-    checkpoint_dir="./checkpoints"
-)
-
-df = await kura_instance.process_conversations()
-kura_instance.visualise_clusters()
-```
-
-#### After (Procedural):
-```python
-from kura import (
-    summarise_conversations,
-    generate_base_clusters_from_conversation_summaries,
-    reduce_clusters_from_base_clusters,
-    reduce_dimensionality_from_clusters,
-    CheckpointManager
-)
-from kura.v1.visualization import visualise_pipeline_results
-
-# Explicit checkpoint management
-checkpoint_mgr = CheckpointManager("./checkpoints", enabled=True)
-
-# Step-by-step execution
-summaries = await summarise_conversations(
-    conversations,
-    model=summary_model,
-    checkpoint_manager=checkpoint_mgr
-)
-
-clusters = await generate_base_clusters_from_conversation_summaries(
-    summaries,
-    model=cluster_model,
-    checkpoint_manager=checkpoint_mgr
-)
-
-meta_clusters = await reduce_clusters_from_base_clusters(
-    clusters,
-    model=meta_cluster_model,
-    checkpoint_manager=checkpoint_mgr
-)
-
-projected = await reduce_dimensionality_from_clusters(
-    meta_clusters,
-    model=dimensionality_model,
-    checkpoint_manager=checkpoint_mgr
-)
-
-visualise_pipeline_results(meta_clusters)
-```
-
-### Common Migration Patterns
-
-1. **Custom summarization only**:
-```python
-# Just get summaries without clustering
-summaries = await summarise_conversations(conversations, model=summary_model)
-# Export or analyze summaries directly
-```
-
-2. **Skip dimensionality reduction**:
-```python
-# Get clusters without 2D projection
-meta_clusters = await reduce_clusters_from_base_clusters(clusters, model=meta_model)
-# Work with hierarchical clusters directly
-```
-
-3. **Use different models per step**:
-```python
-# Mix providers - OpenAI for summaries, local for clustering
-summary_model = SummaryModel(model="gpt-4")
-cluster_model = LocalClusterModel()  # Your custom implementation
-```
+**API Reference**: [Complete documentation](api/index.md) of Kura's procedural API with examples and best practices.
 
 ## Frequently Asked Questions
 
-### How is Kura different from traditional analytics?
+1. **Can Kura work with my data and models?** Yes! Kura supports any conversation format (JSON, CSV, databases) and works with OpenAI, Anthropic, local models, or custom implementations.
 
-Traditional analytics focus on metrics (counts, rates, averages). Kura understands **meaning** - it knows that "How do I cancel?" and "I want to stop my subscription" are the same intent, even though they share no keywords.
+2. **How much data do I need?** Start with 100+ conversations for basic patterns, 1,000+ for robust clustering, or 10,000+ for detailed insights.
 
-### Can I use my own models?
+3. **Is my data secure?** Absolutely. Run Kura entirely on your infrastructure, use local models for complete isolation, and analyze patterns without exposing individual conversations.
 
-Yes! Kura is model-agnostic. You can use:
-- **OpenAI**: GPT-3.5, GPT-4
-- **Anthropic**: Claude models
-- **Local models**: Via Ollama, vLLM, or HuggingFace
-- **Custom implementations**: Extend base classes
+4. **What languages does Kura support?** Any language supported by your chosen model - from English to 90+ languages with models like GPT-4.
 
-### How much data do I need?
-
-- **Minimum**: 100 conversations for meaningful patterns
-- **Recommended**: 1,000+ conversations for robust clustering
-- **Optimal**: 10,000+ conversations for detailed insights
-
-### Is my data secure?
-
-- **Self-hosted option**: Run entirely on your infrastructure
-- **No data retention**: API providers don't store your conversations
-- **Privacy-first**: Analyze patterns without exposing individual chats
-- **Configurable**: Use local models for complete data isolation
-
-### What's the typical workflow?
-
-1. **Export** conversations from your platform
-2. **Load** into Kura using appropriate loader
-3. **Process** through the pipeline (summarize → cluster → visualize)
-4. **Analyze** results in web UI or export findings
-5. **Act** on insights to improve your product
-
-### How do I handle non-English conversations?
-
-Kura works with any language supported by your chosen model:
-```python
-# Use a multilingual model
-summary_model = SummaryModel(
-    model="gpt-4",  # Supports 90+ languages
-    custom_instructions="Respond in the same language as the input"
-)
-```
-
-### Can I integrate Kura into my application?
-
-Yes! Kura is designed as a library:
-```python
-# Use in your async application
-from kura import summarise_conversations
-
-async def analyze_user_feedback(conversations):
-    summaries = await summarise_conversations(
-        conversations,
-        model=summary_model
-    )
-    return summaries
-```
+5. **Can I integrate Kura into my application?** Yes, Kura is designed as a library for seamless integration into your existing async applications.
 
 ## About
 
