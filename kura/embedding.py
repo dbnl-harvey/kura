@@ -191,7 +191,7 @@ class CohereEmbeddingModel(BaseEmbeddingModel):
         if not COHERE_AVAILABLE:
             raise ImportError(
                 "Cohere package is required for CohereEmbeddingModel. "
-                "Install it with: uv pip install -e '.[embeddings]'"
+                "Install it with: uv pip install cohere"
             )
 
         self.client = AsyncClient(api_key=api_key)
