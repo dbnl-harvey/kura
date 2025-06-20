@@ -57,6 +57,7 @@ dev = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.5.49",
     "datasets>=3.6.0",
+    "jupyter>=1.1.1",
 ]
 visualization = [
     "rich>=13.9.4",
