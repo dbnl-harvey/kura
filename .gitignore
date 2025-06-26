@@ -7,8 +7,6 @@ venv/
 .Python
 build/
 develop-eggs/
-dist/
-kura/static/dist/
 downloads/
 eggs/
 .eggs/
