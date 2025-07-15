@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, computed_field
 import uuid
-from typing import Union
+from typing import Optional, Union
+
+from pydantic import BaseModel, Field, computed_field
 
 
-class Cluster(BaseModel):
+class ClusterBase(BaseModel):
     id: str = Field(
         default_factory=lambda: uuid.uuid4().hex,
     )
@@ -37,6 +38,11 @@ class GeneratedCluster(BaseModel):
         ...,
         description="A three-word snake_case summary of what this cluster is about. Examples: 'birthday_party_planning', 'gambling_content_generation', 'code_debugging_help'",
     )
+
+
+class Cluster(ClusterBase):
+    centroid: Optional[list[float]] = None
+    is_base: bool = False
 
 
 class ClusterTreeNode(BaseModel):
