@@ -331,7 +331,7 @@ class KmeansClusteringModel(BaseClusteringMethod):
 
     def cluster(
         self, items: list[dict[str, Union[ConversationSummary, list[float]]]]
-    ) -> tuple[dict[int, list[ConversationSummary]], dict[int, list[float]]]:
+    ) -> dict[int, list[ConversationSummary]]:
         """
         We perform a clustering here using an embedding defined on each individual item.
 
@@ -367,7 +367,6 @@ class KmeansClusteringModel(BaseClusteringMethod):
 
             kmeans = KMeans(n_clusters=n_clusters)
             cluster_labels = kmeans.fit_predict(X)
-            cluster_centers = kmeans.cluster_centers_
 
             logger.debug(
                 f"K-means clustering completed, assigned {len(set(cluster_labels))} unique cluster labels"
@@ -376,9 +375,6 @@ class KmeansClusteringModel(BaseClusteringMethod):
             result = {
                 i: [data[j] for j in range(len(data)) if cluster_labels[j] == i]
                 for i in range(n_clusters)
-            }
-            center_dict = {
-                i: cluster_centers[i] for i in range(n_clusters)
             }
 
             # Log cluster size distribution
@@ -390,7 +386,7 @@ class KmeansClusteringModel(BaseClusteringMethod):
                 f"Cluster size stats - min: {min(cluster_sizes)}, max: {max(cluster_sizes)}, avg: {sum(cluster_sizes) / len(cluster_sizes):.1f}"
             )
 
-            return cast(dict[int, list[ConversationSummary]], result), center_dict
+            return cast(dict[int, list[ConversationSummary]], result)
 
         except Exception as e:
             logger.error(
