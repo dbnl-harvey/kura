@@ -8,7 +8,6 @@ from kura.base_classes.checkpoint import BaseCheckpointManager
 if TYPE_CHECKING:
     from instructor.models import KnownModelName
 from tqdm.asyncio import tqdm_asyncio
-from rich.console import Console
 
 from kura.base_classes import BaseSummaryModel
 from kura.base_classes.cache import CacheStrategy
@@ -101,7 +100,6 @@ class SummaryModel(BaseSummaryModel):
         model: Union[str, "KnownModelName"] = "openai/gpt-4o-mini",
         max_concurrent_requests: int = 50,
         checkpoint_filename: str = "summaries",
-        console: Optional[Console] = None,
         cache: Optional[CacheStrategy] = None,
     ):
         """
@@ -117,7 +115,6 @@ class SummaryModel(BaseSummaryModel):
         self.model = model
         self.max_concurrent_requests = max_concurrent_requests
         self._checkpoint_filename = checkpoint_filename
-        self.console = console
 
         # Initialize cache
         self.cache = cache
@@ -208,32 +205,21 @@ class SummaryModel(BaseSummaryModel):
 
         client = instructor.from_provider(self.model, async_client=True)
 
-        if not self.console:
-            # Simple progress tracking with tqdm
-            summaries = await tqdm_asyncio.gather(
-                *[
-                    self._summarise_single_conversation(
-                        conversation,
-                        client=client,
-                        response_schema=response_schema,
-                        prompt=prompt,
-                        temperature=temperature,
-                        **kwargs,
-                    )
-                    for conversation in conversations
-                ],
-                desc=f"Summarising {len(conversations)} conversations",
-            )
-        else:
-            # Rich console progress tracking with live summary display
-            summaries = await self._summarise_with_console(
-                conversations,
-                client=client,
-                response_schema=response_schema,
-                prompt=prompt,
-                temperature=temperature,
-                **kwargs,
-            )
+        # Simple progress tracking with tqdm
+        summaries = await tqdm_asyncio.gather(
+            *[
+                self._summarise_single_conversation(
+                    conversation,
+                    client=client,
+                    response_schema=response_schema,
+                    prompt=prompt,
+                    temperature=temperature,
+                    **kwargs,
+                )
+                for conversation in conversations
+            ],
+            desc=f"Summarising {len(conversations)} conversations",
+        )
 
         logger.info(
             f"Completed summarization of {len(conversations)} conversations, produced {len(summaries)} summaries"
@@ -340,122 +326,7 @@ class SummaryModel(BaseSummaryModel):
 
         return result
 
-    async def _summarise_with_console(
-        self,
-        conversations: list[Conversation],
-        *,
-        client,
-        response_schema: Type[T],
-        prompt: str,
-        temperature: float,
-        **kwargs,
-    ) -> list[ConversationSummary]:
-        """
-        Summarise conversations with full-screen Rich console display showing progress and latest 3 results.
 
-        Returns ConversationSummary objects with automatic field mapping from response_schema.
-        """
-        from rich.live import Live
-        from rich.layout import Layout
-        from rich.panel import Panel
-        from rich.text import Text
-        from rich.progress import (
-            Progress,
-            SpinnerColumn,
-            TextColumn,
-            TaskProgressColumn,
-            TimeRemainingColumn,
-        )
-
-        summaries = []
-        completed_summaries = []
-        max_preview_items = 3
-
-        # Create full-screen layout
-        layout = Layout()
-        layout.split_column(Layout(name="progress", size=3), Layout(name="preview"))
-
-        # Create progress bar
-        progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=self.console,
-        )
-        task_id = progress.add_task("", total=len(conversations))
-        layout["progress"].update(progress)
-
-        def update_preview_display():
-            if completed_summaries:
-                preview_text = Text()
-
-                for summary in completed_summaries[
-                    -max_preview_items:
-                ]:  # Show latest 3
-                    preview_text.append(
-                        f"summary: {summary.summary or 'No summary'}\n", style="white"
-                    )
-                    concern = summary.concerning_score or 0
-                    frustration = summary.user_frustration or 0
-                    preview_text.append(
-                        f"Concern: {concern}/5, Frustration: {frustration}/5\n\n",
-                        style="yellow",
-                    )
-
-                layout["preview"].update(
-                    Panel(
-                        preview_text,
-                        title=f"[green]Generated Summaries ({len(completed_summaries)}/{len(conversations)})",
-                        border_style="green",
-                    )
-                )
-            else:
-                layout["preview"].update(
-                    Panel(
-                        Text("Waiting for summaries...", style="dim"),
-                        title="[yellow]Generated Summaries (0/0)",
-                        border_style="yellow",
-                    )
-                )
-
-        # Initialize preview display
-        update_preview_display()
-
-        with Live(layout, console=self.console, refresh_per_second=4):
-            # Process conversations concurrently
-            tasks = []
-            for conversation in conversations:
-                coro = self._summarise_single_conversation(
-                    conversation,
-                    client=client,
-                    response_schema=response_schema,
-                    prompt=prompt,
-                    temperature=temperature,
-                    **kwargs,
-                )
-                tasks.append(coro)
-
-            # Use asyncio.as_completed to show results as they finish
-            for i, coro in enumerate(asyncio.as_completed(tasks)):
-                try:
-                    summary = await coro
-                    summaries.append(summary)
-                    completed_summaries.append(summary)
-
-                    # Update progress
-                    progress.update(task_id, completed=i + 1)
-
-                    # Update preview display
-                    update_preview_display()
-
-                except Exception as e:
-                    logger.error(f"Failed to summarise conversation: {e}")
-                    # Still update progress on error
-                    progress.update(task_id, completed=i + 1)
-                    update_preview_display()
-
-        return summaries
 
 
 async def summarise_conversations(
