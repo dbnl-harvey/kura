@@ -26,7 +26,6 @@ from .multi import MultiCheckpointManager
 
 # Check if optional dependencies are available
 PARQUET_AVAILABLE = importlib.util.find_spec("pyarrow") is not None
-HF_DATASETS_AVAILABLE = importlib.util.find_spec("datasets") is not None
 
 # Base exports
 __all__ = [
@@ -34,14 +33,9 @@ __all__ = [
     "JSONLCheckpointManager",
     "MultiCheckpointManager",
     "PARQUET_AVAILABLE",
-    "HF_DATASETS_AVAILABLE",
 ]
 
 # Conditional imports and exports
 if PARQUET_AVAILABLE:
     from .parquet import ParquetCheckpointManager as ParquetCheckpointManager
     __all__.append("ParquetCheckpointManager")
-
-if HF_DATASETS_AVAILABLE:
-    from .hf_dataset import HFDatasetCheckpointManager as HFDatasetCheckpointManager
-    __all__.append("HFDatasetCheckpointManager")
