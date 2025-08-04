@@ -7,9 +7,10 @@ and rich-formatted output using the Rich library when available.
 Compatible with the procedural Kura v1 pipeline approach.
 """
 
-from typing import List, Optional, Union, Literal
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import List, Literal, Optional, Union
+
 from kura.types import Cluster, ClusterTreeNode
 
 # Rich package has been removed - using basic visualization only
@@ -59,18 +60,14 @@ def _build_tree_structure(
         if is_last:
             child_prefix += "    "  # No vertical line needed for last child's children
         else:
-            child_prefix += (
-                "║   "  # Continue vertical line for non-last child's children
-            )
+            child_prefix += "║   "  # Continue vertical line for non-last child's children
 
     # Process children
     children = node.children
     for i, child_id in enumerate(children):
         child = node_id_to_cluster[child_id]
         is_last_child = i == len(children) - 1
-        result += _build_tree_structure(
-            child, node_id_to_cluster, level + 1, is_last_child, child_prefix
-        )
+        result += _build_tree_structure(child, node_id_to_cluster, level + 1, is_last_child, child_prefix)
 
     return result
 
@@ -117,17 +114,11 @@ def _build_enhanced_tree_structure(
             current_prefix += "╠══ "
 
     # Calculate percentage of total conversations
-    percentage = (
-        (node.count / total_conversations * 100) if total_conversations > 0 else 0
-    )
+    percentage = (node.count / total_conversations * 100) if total_conversations > 0 else 0
 
     # Create progress bar for visual representation
     bar_width = 20
-    filled_width = (
-        int((node.count / total_conversations) * bar_width)
-        if total_conversations > 0
-        else 0
-    )
+    filled_width = int((node.count / total_conversations) * bar_width) if total_conversations > 0 else 0
     progress_bar = "█" * filled_width + "░" * (bar_width - filled_width)
 
     # Build the line with enhanced formatting
@@ -135,11 +126,7 @@ def _build_enhanced_tree_structure(
     result += f"{prefix}{'║   ' if not is_last and level > 0 else '    '}📊 {node.count:,} conversations ({percentage:.1f}%) [{progress_bar}]\n"
 
     # Add description if available and not too long
-    if (
-        hasattr(node, "description")
-        and node.description
-        and len(node.description) < 100
-    ):
+    if hasattr(node, "description") and node.description and len(node.description) < 100:
         result += f"{prefix}{'║   ' if not is_last and level > 0 else '    '}💭 {node.description}\n"
 
     result += "\n"
@@ -220,7 +207,7 @@ def _build_cluster_tree(clusters: List[Cluster]) -> dict[str, ClusterTreeNode]:
 
     # Link parent-child relationships
     for cluster in clusters:
-        if cluster.parent_id:
+        if cluster.parent_id and cluster.count > 0:
             node_id_to_cluster[cluster.parent_id].children.append(cluster.id)
 
     return node_id_to_cluster
@@ -265,9 +252,7 @@ def visualise_clusters(
     node_id_to_cluster = _build_cluster_tree(clusters)
 
     # Find root nodes and build the tree
-    root_nodes = [
-        node_id_to_cluster[cluster.id] for cluster in clusters if not cluster.parent_id
-    ]
+    root_nodes = [node_id_to_cluster[cluster.id] for cluster in clusters if not cluster.parent_id]
 
     total_conversations = sum(node.count for node in root_nodes)
     fake_root = ClusterTreeNode(
@@ -280,7 +265,8 @@ def visualise_clusters(
     )
 
     tree_output = _build_tree_structure(fake_root, node_id_to_cluster, 0, False)
-    print(tree_output)
+    # print(tree_output)
+    return tree_output
 
 
 def visualise_clusters_enhanced(
@@ -332,9 +318,7 @@ def visualise_clusters_enhanced(
         children=[node.id for node in root_nodes],
     )
 
-    tree_output = _build_enhanced_tree_structure(
-        fake_root, node_id_to_cluster, 0, False, "", total_conversations
-    )
+    tree_output = _build_enhanced_tree_structure(fake_root, node_id_to_cluster, 0, False, "", total_conversations)
 
     print(tree_output)
 
@@ -345,13 +329,8 @@ def visualise_clusters_enhanced(
     print(f"📊 Total Clusters: {len(clusters)}")
     print(f"🌳 Root Clusters: {len(root_nodes)}")
     print(f"💬 Total Conversations: {total_conversations:,}")
-    print(
-        f"📏 Average Conversations per Root Cluster: {total_conversations / len(root_nodes):.1f}"
-    )
+    print(f"📏 Average Conversations per Root Cluster: {total_conversations / len(root_nodes):.1f}")
     print("=" * 80 + "\n")
-
-
-
 
 
 # =============================================================================
@@ -382,18 +361,14 @@ def visualise_from_checkpoint_manager(
     if not hasattr(meta_cluster_model, "checkpoint_filename"):
         raise ValueError("Meta cluster model must have checkpoint_filename attribute")
 
-    checkpoint_path = checkpoint_manager.get_checkpoint_path(
-        meta_cluster_model.checkpoint_filename
-    )
+    checkpoint_path = checkpoint_manager.get_checkpoint_path(meta_cluster_model.checkpoint_filename)
 
     if style == "basic":
         visualise_clusters(checkpoint_path=checkpoint_path)
     elif style == "enhanced":
         visualise_clusters_enhanced(checkpoint_path=checkpoint_path)
     else:
-        raise ValueError(
-            f"Invalid style '{style}'. Must be one of: basic, enhanced"
-        )
+        raise ValueError(f"Invalid style '{style}'. Must be one of: basic, enhanced")
 
 
 def visualise_pipeline_results(
@@ -417,6 +392,4 @@ def visualise_pipeline_results(
     elif style == "enhanced":
         visualise_clusters_enhanced(clusters)
     else:
-        raise ValueError(
-            f"Invalid style '{style}'. Must be one of: basic, enhanced"
-        )
+        raise ValueError(f"Invalid style '{style}'. Must be one of: basic, enhanced")
